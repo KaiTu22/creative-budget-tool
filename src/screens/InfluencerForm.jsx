@@ -48,36 +48,35 @@ function StatBox({ label, value, sub, accent }) {
   )
 }
 
-export default function InfluencerForm({ packageType = 'influencer', onSave, onCancel }) {
-  const isInfluencer = packageType === 'influencer'
+export default function InfluencerForm({ packageType = 'influencer', existingPackage, onSave, onCancel }) {
+  const isInfluencer  = packageType === 'influencer'
   const campaignTypes = isInfluencer ? INFLUENCER_CAMPAIGN_TYPES : BRANDED_CONTENT_CAMPAIGN_TYPES
-  const tableKey = isInfluencer ? 'influence' : 'brandedContent'
-  const label = isInfluencer ? 'Influencer' : 'Branded Content'
+  const tableKey      = isInfluencer ? 'influence' : 'brandedContent'
+  const label         = isInfluencer ? 'Influencer' : 'Branded Content'
 
-  // ── Form state ──
-  const [title, setTitle]                   = useState('')
-  const [totalInvestment, setTotalInvestment] = useState('')
-  const [mediaPct, setMediaPct]             = useState(0.50)
-  const [mediaMode, setMediaMode]           = useState('pct') // 'pct' | 'dollar'
-  const [markupPct, setMarkupPct]           = useState(DEFAULTS.influencerMarkup)
-  const [campaignType, setCampaignType]     = useState(campaignTypes[0].value)
-  const [presentation, setPresentation]     = useState('brokenOut')
-  const [costLines, setCostLines]           = useState([])
-  const [platforms, setPlatforms]           = useState([{ id: crypto.randomUUID(), handle: 'influencer', platform: 'instagram' }])
-  const [creativeAssets, setCreativeAssets] = useState('')
-  const [notes, setNotes]                   = useState('')
-  const [showRefTable, setShowRefTable]     = useState(false)
-  const [titleError, setTitleError]         = useState(false)
+  const ep = existingPackage
+
+  const [title, setTitle]                     = useState(ep?.title || '')
+  const [totalInvestment, setTotalInvestment] = useState(ep?.totalInvestment || '')
+  const [mediaPct, setMediaPct]               = useState(ep?.mediaPct || 0.50)
+  const [mediaMode, setMediaMode]             = useState('pct')
+  const [markupPct, setMarkupPct]             = useState(ep?.markupPct || DEFAULTS.influencerMarkup)
+  const [campaignType, setCampaignType]       = useState(ep?.campaignType || campaignTypes[0].value)
+  const [presentation, setPresentation]       = useState(ep?.presentation || 'brokenOut')
+  const [costLines, setCostLines]             = useState(ep?.costLines || [])
+  const [platforms, setPlatforms]             = useState(ep?.platforms || [{ id: crypto.randomUUID(), handle: 'influencer', platform: 'instagram' }])
+  const [creativeAssets, setCreativeAssets]   = useState(ep?.creativeAssets || '')
+  const [notes, setNotes]                     = useState(ep?.notes || '')
+  const [showRefTable, setShowRefTable]       = useState(false)
+  const [titleError, setTitleError]           = useState(false)
 
   const investment = parseFloat(totalInvestment) || 0
 
-  // ── Live calculations ──
   const calc = useMemo(() => {
     if (!investment) return null
     return calcInfluencerSplit(investment, mediaPct, markupPct)
   }, [investment, mediaPct, markupPct])
 
-  // ── Media split handlers ──
   function handleMediaPctChange(val) {
     const n = parseFloat(val) || 0
     setMediaPct(n > 1 ? n / 100 : n)
@@ -88,7 +87,6 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
     if (investment > 0) setMediaPct(mediaAmountToPct(n, investment))
   }
 
-  // ── Platform handlers ──
   function addPlatform() {
     setPlatforms(prev => [...prev, { id: crypto.randomUUID(), handle: 'influencer', platform: 'instagram' }])
   }
@@ -99,26 +97,25 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
     setPlatforms(prev => prev.filter(p => p.id !== id))
   }
 
-  // ── Save ──
   function handleSave() {
     if (!title.trim()) { setTitleError(true); return }
     if (!calc) return
     onSave({
-      id:              crypto.randomUUID(),
-      type:            packageType,
-      title:           title.trim(),
+      id:               crypto.randomUUID(),
+      type:             packageType,
+      title:            title.trim(),
       campaignType,
       presentation,
       markupPct,
-      totalInvestment: investment,
-      mediaInvestment: calc.mediaInvestment,
+      totalInvestment:  investment,
+      mediaInvestment:  calc.mediaInvestment,
       mediaPct,
-      ptInvestment:    calc.ptInvestment,
-      ptCost:          calc.ptCost,
-      ptMargin:        calc.ptMargin,
-      ptMarginPct:     calc.ptMarginPct,
-      workingAmount:   calc.workingAmount,
-      nonWorkingAmount:calc.nonWorkingAmount,
+      ptInvestment:     calc.ptInvestment,
+      ptCost:           calc.ptCost,
+      ptMargin:         calc.ptMargin,
+      ptMarginPct:      calc.ptMarginPct,
+      workingAmount:    calc.workingAmount,
+      nonWorkingAmount: calc.nonWorkingAmount,
       costLines,
       platforms,
       creativeAssets,
@@ -126,7 +123,6 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
     })
   }
 
-  // ── Reference table ──
   const refTable = MEDIA_PCT_TABLES[tableKey]
 
   return (
@@ -135,10 +131,9 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
         <button className="btn btn-ghost btn-sm" onClick={onCancel} style={{ marginBottom: '0.75rem', padding: '0.2rem 0.5rem' }}>
           ← Back
         </button>
-        <h1>New {label} Package</h1>
+        <h1>{existingPackage ? 'Edit' : 'New'} {label} Package</h1>
       </div>
 
-      {/* ── SECTION 1: Investment & Split ── */}
       <div className="card" style={{ marginBottom: '1rem' }}>
         <SectionHeader title="Investment & Split" />
 
@@ -192,21 +187,14 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
           </div>
         </div>
 
-        {/* Media split */}
         <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
             <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Media Split
             </div>
             <div style={{ display: 'flex', gap: '0.35rem' }}>
-              <button
-                className={`btn btn-sm ${mediaMode === 'pct' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setMediaMode('pct')}
-              >% Mode</button>
-              <button
-                className={`btn btn-sm ${mediaMode === 'dollar' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setMediaMode('dollar')}
-              >$ Mode</button>
+              <button className={`btn btn-sm ${mediaMode === 'pct' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setMediaMode('pct')}>% Mode</button>
+              <button className={`btn btn-sm ${mediaMode === 'dollar' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setMediaMode('dollar')}>$ Mode</button>
             </div>
           </div>
 
@@ -242,7 +230,6 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
             </div>
           </div>
 
-          {/* Reference table */}
           {showRefTable && (
             <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
@@ -260,13 +247,9 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
                 <tbody>
                   {refTable.map(group => group.rows.map((row, i) => (
                     <tr key={`${group.campaignType}-${i}`} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td style={{ padding: '0.4rem 0.75rem', color: 'var(--text-muted)' }}>
-                        {i === 0 ? group.campaignType : ''}
-                      </td>
+                      <td style={{ padding: '0.4rem 0.75rem', color: 'var(--text-muted)' }}>{i === 0 ? group.campaignType : ''}</td>
                       <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${row.cpm.toFixed(2)}</td>
-                      <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right', fontWeight: 600, color: 'var(--primary)' }}>
-                        {(row.mediaPct * 100).toFixed(2)}%
-                      </td>
+                      <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right', fontWeight: 600, color: 'var(--primary)' }}>{(row.mediaPct * 100).toFixed(2)}%</td>
                       <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>{(row.youtubePct * 100).toFixed(0)}%</td>
                       <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>{(row.paramountPct * 100).toFixed(0)}%</td>
                       <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>{(row.influencerPct * 100).toFixed(0)}%</td>
@@ -275,9 +258,7 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
                           className="btn btn-accent btn-sm"
                           style={{ padding: '0.2rem 0.6rem', fontSize: '0.7rem' }}
                           onClick={() => { setMediaPct(row.mediaPct); setMediaMode('pct') }}
-                        >
-                          Use
-                        </button>
+                        >Use</button>
                       </td>
                     </tr>
                   )))}
@@ -287,19 +268,17 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
           )}
         </div>
 
-        {/* Live calc summary */}
         {calc && (
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <StatBox label="Total Investment"   value={formatCurrency(calc.totalInvestment)} accent />
-            <StatBox label="Media Investment"   value={formatCurrency(calc.mediaInvestment)} sub={formatPct(mediaPct) + ' of total'} />
-            <StatBox label="P&T Investment"     value={formatCurrency(calc.ptInvestment)}    sub={formatPct(1 - mediaPct) + ' of total'} />
-            <StatBox label="Internal P&T Budget" value={formatCurrency(calc.ptCost)}         sub={'After ' + Math.round(markupPct * 100) + '% markup'} accent />
-            <StatBox label="Margin"             value={formatCurrency(calc.ptMargin)}        sub={formatPct(calc.ptMarginPct)} />
+            <StatBox label="Total Investment"    value={formatCurrency(calc.totalInvestment)} accent />
+            <StatBox label="Media Investment"    value={formatCurrency(calc.mediaInvestment)} sub={formatPct(mediaPct) + ' of total'} />
+            <StatBox label="P&T Investment"      value={formatCurrency(calc.ptInvestment)}    sub={formatPct(1 - mediaPct) + ' of total'} />
+            <StatBox label="Internal P&T Budget" value={formatCurrency(calc.ptCost)}          sub={'After ' + Math.round(markupPct * 100) + '% markup'} accent />
+            <StatBox label="Margin"              value={formatCurrency(calc.ptMargin)}         sub={formatPct(calc.ptMarginPct)} />
           </div>
         )}
       </div>
 
-      {/* ── SECTION 2: Budget Workbench ── */}
       <div className="card" style={{ marginBottom: '1rem' }}>
         <SectionHeader title="Budget Workbench — P&T Cost Itemization" />
         {calc ? (
@@ -315,10 +294,8 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
         )}
       </div>
 
-      {/* ── SECTION 3: Platforms ── */}
       <div className="card" style={{ marginBottom: '1rem' }}>
         <SectionHeader title="Platforms" />
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
           {platforms.map(p => (
             <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '160px 180px 1fr 36px', gap: '0.5rem', alignItems: 'center' }}>
@@ -331,17 +308,13 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
               <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
                 {p.handle === 'paramount' ? 'Paramount-managed handle' : 'Influencer handle'}
               </div>
-              <button
-                onClick={() => removePlatform(p.id)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-subtle)', fontSize: '1.1rem', padding: 0 }}
-              >×</button>
+              <button onClick={() => removePlatform(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-subtle)', fontSize: '1.1rem', padding: 0 }}>×</button>
             </div>
           ))}
         </div>
         <button className="btn btn-secondary btn-sm" onClick={addPlatform}>+ Add Platform</button>
       </div>
 
-      {/* ── SECTION 4: Notes ── */}
       <div className="card" style={{ marginBottom: '1rem' }}>
         <SectionHeader title="Additional Details" />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -360,7 +333,7 @@ export default function InfluencerForm({ packageType = 'influencer', onSave, onC
         <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
         {!investment && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Enter a total investment to save</span>}
         <button className="btn btn-accent" onClick={handleSave} disabled={!investment}>
-          Save Package →
+          {existingPackage ? 'Save Changes →' : 'Save Package →'}
         </button>
       </div>
     </div>

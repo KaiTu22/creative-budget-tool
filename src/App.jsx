@@ -25,11 +25,31 @@ function saveProjects(projects) {
 export default function App() {
   const [projects, setProjects]             = useState(loadProjects)
   const [screen, setScreen]                 = useState('projectList')
-  const [activeProject, setActiveProject]   = useState(null)
-  const [activeVersion, setActiveVersion]   = useState(null)
+  const [activeProjectId, setActiveProjectId] = useState(null)
+  const [activeVersionId, setActiveVersionId] = useState(null)
   const [selectedPackageType, setSelectedPackageType] = useState('influencer')
+  const [editingPackage, setEditingPackage] = useState(null)
 
   useEffect(() => { saveProjects(projects) }, [projects])
+
+  // ── Derived active objects (always fresh from projects) ──
+  const activeProject = projects.find(p => p.id === activeProjectId) || null
+  const activeVersion = activeProject?.versions.find(v => v.id === activeVersionId) || null
+
+  // ── Helpers ──
+  function updateVersion(updaterFn) {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== activeProjectId) return p
+      return {
+        ...p,
+        updatedAt: Date.now(),
+        versions: p.versions.map(v => {
+          if (v.id !== activeVersionId) return v
+          return updaterFn(v)
+        })
+      }
+    }))
+  }
 
   // ── Project actions ──
   function createProject(data) {
@@ -41,7 +61,7 @@ export default function App() {
       updatedAt: Date.now(),
     }
     setProjects(prev => [project, ...prev])
-    setActiveProject(project)
+    setActiveProjectId(project.id)
     setScreen('versionList')
   }
 
@@ -58,43 +78,49 @@ export default function App() {
       createdAt: Date.now(),
     }
     setProjects(prev => prev.map(p => {
-      if (p.id !== activeProject.id) return p
-      const updated = { ...p, versions: [version, ...p.versions], updatedAt: Date.now() }
-      setActiveProject(updated)
-      return updated
+      if (p.id !== activeProjectId) return p
+      return { ...p, versions: [version, ...p.versions], updatedAt: Date.now() }
     }))
-    setActiveVersion(version)
+    setActiveVersionId(version.id)
   }
 
   function deleteVersion(versionId) {
     setProjects(prev => prev.map(p => {
-      if (p.id !== activeProject.id) return p
-      const updated = {
-        ...p,
-        versions: p.versions.filter(v => v.id !== versionId),
-        updatedAt: Date.now()
-      }
-      setActiveProject(updated)
-      return updated
+      if (p.id !== activeProjectId) return p
+      return { ...p, versions: p.versions.filter(v => v.id !== versionId), updatedAt: Date.now() }
     }))
   }
 
   // ── Package actions ──
   function savePackage(packageData) {
-    let updatedVersion = null
-    setProjects(prev => prev.map(p => {
-      if (p.id !== activeProject.id) return p
-      const updatedVersions = p.versions.map(v => {
-        if (v.id !== activeVersion.id) return v
-        updatedVersion = { ...v, packages: [...v.packages, packageData] }
-        return updatedVersion
-      })
-      const updated = { ...p, versions: updatedVersions, updatedAt: Date.now() }
-      setActiveProject(updated)
-      return updated
-    }))
-    if (updatedVersion) setActiveVersion(updatedVersion)
+    updateVersion(v => {
+      if (editingPackage) {
+        return { ...v, packages: v.packages.map(p => p.id === editingPackage.id ? { ...packageData, id: editingPackage.id } : p) }
+      }
+      return { ...v, packages: [...v.packages, packageData] }
+    })
+    setEditingPackage(null)
     setScreen('versionSummary')
+  }
+
+  function deletePackage(packageId) {
+    updateVersion(v => ({ ...v, packages: v.packages.filter(p => p.id !== packageId) }))
+  }
+
+  function reorderPackage(index, direction) {
+    updateVersion(v => {
+      const pkgs    = [...v.packages]
+      const swapIdx = direction === 'up' ? index - 1 : index + 1
+      ;[pkgs[index], pkgs[swapIdx]] = [pkgs[swapIdx], pkgs[index]]
+      return { ...v, packages: pkgs }
+    })
+  }
+
+  function startEdit(pkg) {
+    setEditingPackage(pkg)
+    setSelectedPackageType(pkg.type)
+    if (pkg.type === 'blendedSocial') setScreen('blendedSocialForm')
+    else setScreen('influencerForm')
   }
 
   // ── Header ──
@@ -103,11 +129,7 @@ export default function App() {
       <header className="app-header">
         <div
           className="app-logo"
-          onClick={() => {
-            setScreen('projectList')
-            setActiveProject(null)
-            setActiveVersion(null)
-          }}
+          onClick={() => { setScreen('projectList'); setActiveProjectId(null); setActiveVersionId(null) }}
           style={{ cursor: 'pointer' }}
         >
           <div className="app-logo-box">BT</div>
@@ -119,11 +141,7 @@ export default function App() {
         <nav className="breadcrumb">
           {activeProject && <>
             <span
-              onClick={() => {
-                setScreen('projectList')
-                setActiveProject(null)
-                setActiveVersion(null)
-              }}
+              onClick={() => { setScreen('projectList'); setActiveProjectId(null); setActiveVersionId(null) }}
               style={{ cursor: 'pointer', opacity: 0.6 }}
             >
               Projects
@@ -153,7 +171,7 @@ export default function App() {
       {screen === 'projectList' && (
         <ProjectList
           projects={projects}
-          onSelect={(p) => { setActiveProject(p); setScreen('versionList') }}
+          onSelect={(p) => { setActiveProjectId(p.id); setScreen('versionList') }}
           onNew={() => setScreen('projectForm')}
           onDelete={deleteProject}
         />
@@ -171,15 +189,8 @@ export default function App() {
           project={activeProject}
           onNewVersion={createVersion}
           onDeleteVersion={deleteVersion}
-          onOpenVersion={(v) => {
-            setActiveVersion(v)
-            setScreen('versionSummary')
-          }}
-          onBack={() => {
-            setScreen('projectList')
-            setActiveProject(null)
-            setActiveVersion(null)
-          }}
+          onOpenVersion={(v) => { setActiveVersionId(v.id); setScreen('versionSummary') }}
+          onBack={() => { setScreen('projectList'); setActiveProjectId(null); setActiveVersionId(null) }}
         />
       )}
 
@@ -187,12 +198,10 @@ export default function App() {
         <PackageTypeSelector
           version={activeVersion}
           onSelect={(type) => {
+            setEditingPackage(null)
             setSelectedPackageType(type)
-            if (type === 'blendedSocial') {
-              setScreen('blendedSocialForm')
-            } else if (type === 'influencer' || type === 'brandedContent') {
-              setScreen('influencerForm')
-            }
+            if (type === 'blendedSocial') setScreen('blendedSocialForm')
+            else if (type === 'influencer' || type === 'brandedContent') setScreen('influencerForm')
           }}
           onBack={() => setScreen('versionSummary')}
         />
@@ -201,15 +210,17 @@ export default function App() {
       {screen === 'influencerForm' && (
         <InfluencerForm
           packageType={selectedPackageType}
+          existingPackage={editingPackage}
           onSave={savePackage}
-          onCancel={() => setScreen('packageTypeSelector')}
+          onCancel={() => { setEditingPackage(null); setScreen(editingPackage ? 'versionSummary' : 'packageTypeSelector') }}
         />
       )}
 
       {screen === 'blendedSocialForm' && (
         <BlendedSocialForm
+          existingPackage={editingPackage}
           onSave={savePackage}
-          onCancel={() => setScreen('packageTypeSelector')}
+          onCancel={() => { setEditingPackage(null); setScreen(editingPackage ? 'versionSummary' : 'packageTypeSelector') }}
         />
       )}
 
@@ -217,7 +228,10 @@ export default function App() {
         <VersionSummary
           project={activeProject}
           version={activeVersion}
-          onAddPackage={() => setScreen('packageTypeSelector')}
+          onAddPackage={() => { setEditingPackage(null); setScreen('packageTypeSelector') }}
+          onEditPackage={startEdit}
+          onDeletePackage={deletePackage}
+          onReorderPackage={reorderPackage}
           onBack={() => setScreen('versionList')}
         />
       )}

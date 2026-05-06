@@ -1,5 +1,70 @@
 import { useState } from 'react'
 
+function ProjectDetailsCard({ project }) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div style={{
+      background: 'var(--navy-light)',
+      border: '1px solid #c7d2fe',
+      borderRadius: '10px',
+      marginBottom: '1.5rem',
+      overflow: 'hidden',
+    }}>
+      <div
+        onClick={() => setExpanded(v => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0.875rem 1.25rem',
+          cursor: 'pointer',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+          {[
+            ['Sales Lead', project?.salesLead],
+            ['Pitch Lead', project?.pitchLead],
+            ['Due Date', project?.planDueDate],
+            ['Template', project?.template === 'paramount' ? 'Paramount' : 'Agency'],
+            ['Audience', project?.targetAudience],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)' }}>{label}</div>
+              <div style={{ fontSize: '0.84rem', color: 'var(--primary)', fontWeight: 600 }}>{value}</div>
+            </div>
+          ))}
+        </div>
+        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', marginLeft: '1rem' }}>
+          {expanded ? 'Hide details ▲' : 'Show details ▼'}
+        </span>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: '1.25rem', borderTop: '1px solid #c7d2fe' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+            {[
+              ['Agency', project?.agencyName],
+              ['Campaign Start', project?.campaignStart || '—'],
+              ['Campaign End', project?.campaignEnd || '—'],
+              ['Salesforce Link', project?.salesforceLink || '—'],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>{label}</div>
+                <div style={{ fontSize: '0.84rem', color: 'var(--text)', fontWeight: 500 }}>{value}</div>
+              </div>
+            ))}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>Campaign Objective</div>
+              <div style={{ fontSize: '0.84rem', color: 'var(--text)' }}>{project?.objective}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function VersionList({ project, onNewVersion, onDeleteVersion, onOpenVersion, onBack }) {
   const [showForm, setShowForm] = useState(false)
   const [versionName, setVersionName] = useState('')
@@ -30,25 +95,8 @@ export default function VersionList({ project, onNewVersion, onDeleteVersion, on
         <button className="btn btn-accent" onClick={() => setShowForm(true)}>+ New Version</button>
       </div>
 
-      {/* Project meta strip */}
-      <div className="card" style={{ background: 'var(--navy-light)', border: '1px solid #c7d2fe', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-          {[
-            ['Sales Lead', project?.salesLead],
-            ['Pitch Lead', project?.pitchLead],
-            ['Due Date', project?.planDueDate],
-            ['Template', project?.template === 'paramount' ? 'Paramount' : 'Agency'],
-            ['Audience', project?.targetAudience],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)' }}>{label}</div>
-              <div style={{ fontSize: '0.875rem', color: 'var(--primary)', fontWeight: 600 }}>{value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <ProjectDetailsCard project={project} />
 
-      {/* New version form */}
       {showForm && (
         <div className="card" style={{ border: '2px solid var(--accent)', marginBottom: '1rem' }}>
           <h3 style={{ marginBottom: '1rem', color: 'var(--primary)' }}>New Version</h3>
@@ -82,7 +130,6 @@ export default function VersionList({ project, onNewVersion, onDeleteVersion, on
         </div>
       )}
 
-      {/* Version list */}
       {project?.versions.length === 0 && !showForm && (
         <div className="empty-state card">
           <h3>No versions yet</h3>
