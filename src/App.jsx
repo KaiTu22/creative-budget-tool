@@ -17,43 +17,30 @@ import {
 } from './data/db'
 
 export default function App() {
-  const [projects, setProjects]             = useState([])
-  const [versions, setVersions]             = useState([])
-  const [packages, setPackages]             = useState([])
-  const [loading, setLoading]               = useState(true)
-  const [screen, setScreen]                 = useState('projectList')
+  const [projects, setProjects]               = useState([])
+  const [versions, setVersions]               = useState([])
+  const [packages, setPackages]               = useState([])
+  const [loading, setLoading]                 = useState(true)
+  const [screen, setScreen]                   = useState('projectList')
   const [activeProjectId, setActiveProjectId] = useState(null)
   const [activeVersionId, setActiveVersionId] = useState(null)
   const [selectedPackageType, setSelectedPackageType] = useState('influencer')
-  const [editingPackage, setEditingPackage] = useState(null)
+  const [editingPackage, setEditingPackage]   = useState(null)
 
-  // ── Derived objects (always fresh) ──
+  // ── Derived objects ──
   const activeProject = projects.find(p => p.id === activeProjectId) || null
   const activeVersion = versions.find(v => v.id === activeVersionId) || null
 
-  // Attach versions to projects and packages to versions for components that need the tree
-  const projectsWithVersions = projects.map(p => ({
-    ...p,
-    versions: versions
-      .filter(v => v.projectId === p.id)
-      .map(v => ({
-        ...v,
-        packages: packages.filter(pkg => pkg.versionId === v.id || activeVersionId === v.id)
-      }))
-  }))
-
-  const activeProjectFull = projectsWithVersions.find(p => p.id === activeProjectId) || null
-  const activeVersionFull = activeProjectFull?.versions.find(v => v.id === activeVersionId) || null
-
-  // ── Attach packages to active version ──
-  const activeVersionWithPackages = activeVersion
+  const versionForSummary = activeVersion
     ? { ...activeVersion, packages: packages.filter(p => p.versionId === activeVersionId) }
     : null
 
+  const projectForVersionList = activeProject
+    ? { ...activeProject, versions: versions.filter(v => v.projectId === activeProjectId) }
+    : null
+
   // ── Initial load ──
-  useEffect(() => {
-    loadProjects()
-  }, [])
+  useEffect(() => { loadProjects() }, [])
 
   async function loadProjects() {
     try {
@@ -70,6 +57,7 @@ export default function App() {
   async function loadVersions(projectId) {
     try {
       const data = await fetchVersions(projectId)
+      console.log('Loaded versions:', data)
       setVersions(data)
     } catch (e) {
       console.error('Failed to load versions:', e)
@@ -79,6 +67,7 @@ export default function App() {
   async function loadPackages(versionId) {
     try {
       const data = await fetchPackages(versionId)
+      console.log('Loaded packages for version', versionId, data)
       setPackages(data)
     } catch (e) {
       console.error('Failed to load packages:', e)
@@ -92,6 +81,7 @@ export default function App() {
       setProjects(prev => [project, ...prev])
       setActiveProjectId(project.id)
       setVersions([])
+      setPackages([])
       setScreen('versionList')
     } catch (e) {
       console.error('Failed to create project:', e)
@@ -112,6 +102,7 @@ export default function App() {
   async function handleCreateVersion(data) {
     try {
       const version = await dbCreateVersion(activeProjectId, data)
+      console.log('Created version:', version)
       setVersions(prev => [version, ...prev])
       setActiveVersionId(version.id)
       setPackages([])
@@ -139,11 +130,22 @@ export default function App() {
       const currentPackages = packages.filter(p => p.versionId === activeVersionId)
       if (editingPackage) {
         const updated = await dbUpdatePackage(editingPackage.id, packageData)
-        setPackages(prev => prev.map(p => p.id === editingPackage.id ? { ...updated, versionId: activeVersionId } : p))
+        setPackages(prev => prev.map(p =>
+          p.id === editingPackage.id
+            ? { ...updated, versionId: activeVersionId }
+            : p
+        ))
       } else {
         const position = currentPackages.length
         const created  = await dbCreatePackage(activeVersionId, packageData, position)
+        console.log('Created package:', created)
         setPackages(prev => [...prev, { ...created, versionId: activeVersionId }])
+        // Update package count on the version in state
+        setVersions(prev => prev.map(v =>
+          v.id === activeVersionId
+            ? { ...v, packageCount: (v.packageCount ?? 0) + 1 }
+            : v
+        ))
       }
       setEditingPackage(null)
       setScreen('versionSummary')
@@ -156,6 +158,12 @@ export default function App() {
     try {
       await dbDeletePackage(packageId)
       setPackages(prev => prev.filter(p => p.id !== packageId))
+      // Update package count on the version in state
+      setVersions(prev => prev.map(v =>
+        v.id === activeVersionId
+          ? { ...v, packageCount: Math.max((v.packageCount ?? 1) - 1, 0) }
+          : v
+      ))
     } catch (e) {
       console.error('Failed to delete package:', e)
     }
@@ -187,11 +195,13 @@ export default function App() {
   // ── Navigation ──
   async function openProject(project) {
     setActiveProjectId(project.id)
+    setPackages([])
     await loadVersions(project.id)
     setScreen('versionList')
   }
 
   async function openVersion(version) {
+    console.log('Opening version:', version.id)
     setActiveVersionId(version.id)
     await loadPackages(version.id)
     setScreen('versionSummary')
@@ -219,7 +229,7 @@ export default function App() {
         <nav className="breadcrumb">
           {activeProject && <>
             <span
-              onClick={() => { setScreen('versionList') }}
+              onClick={() => setScreen('versionList')}
               style={{ cursor: 'pointer', opacity: 0.6 }}
             >
               {activeProject.brandName}
@@ -245,19 +255,6 @@ export default function App() {
       </>
     )
   }
-
-  // ── Active version with packages for summary ──
-  const versionForSummary = activeVersion
-    ? { ...activeVersion, packages: packages.filter(p => p.versionId === activeVersionId) }
-    : null
-
-  // ── Active project with versions for version list ──
-  const projectForVersionList = activeProject
-    ? {
-        ...activeProject,
-        versions: versions.filter(v => v.projectId === activeProjectId)
-      }
-    : null
 
   // ── Router ──
   return (

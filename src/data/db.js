@@ -38,11 +38,14 @@ export async function deleteProject(id) {
 export async function fetchVersions(projectId) {
   const { data, error } = await supabase
     .from('versions')
-    .select('*')
+    .select('*, packages(count)')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data.map(dbToVersion)
+  return data.map(v => ({
+    ...dbToVersion(v),
+    packageCount: v.packages?.[0]?.count ?? 0,
+  }))
 }
 
 export async function createVersion(projectId, version) {
@@ -171,7 +174,8 @@ function dbToVersion(v) {
 function dbToPackage(p) {
   return {
     ...p.data,
-    id:       p.id,
-    position: p.position,
+    id:        p.id,
+    position:  p.position,
+    versionId: p.version_id,
   }
 }

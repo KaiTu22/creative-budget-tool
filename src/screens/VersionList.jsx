@@ -149,7 +149,7 @@ export default function VersionList({ project, onNewVersion, onDeleteVersion, on
                 {v.name}
               </div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                {v.packages.length} package{v.packages.length !== 1 ? 's' : ''}
+                {v.packageCount ?? v.packages?.length ?? 0} package{(v.packageCount ?? v.packages?.length ?? 0) !== 1 ? 's' : ''}
                 {v.notes && ` · ${v.notes}`}
               </div>
             </div>
