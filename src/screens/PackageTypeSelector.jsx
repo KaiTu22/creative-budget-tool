@@ -90,37 +90,50 @@ export default function PackageTypeSelector({ version, onSelect, onBack }) {
 
       <hr className="divider" />
 
-      {/* Future packages */}
+      {/* All other package types */}
       <div>
         <div style={{
           fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase',
           letterSpacing: '0.08em', color: 'var(--text-subtle)', marginBottom: '0.75rem'
         }}>
-          Coming in v1.5
+          Additional Package Types
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
           {futureTypes.map(([key, pkg]) => (
-            <div
+            <button
               key={key}
+              onClick={() => onSelect(key)}
               style={{
-                background: 'var(--bg)',
+                background: 'var(--surface)',
                 border: '1px solid var(--border)',
                 borderRadius: '10px',
                 padding: '1.25rem',
-                opacity: 0.55,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.5rem',
               }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'var(--bg)'
+                e.currentTarget.style.boxShadow = 'var(--shadow-md)'
+                e.currentTarget.style.borderColor = 'var(--text-muted)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'var(--surface)'
+                e.currentTarget.style.boxShadow = 'none'
+                e.currentTarget.style.borderColor = 'var(--border)'
+              }}
             >
               <div style={{ fontSize: '1.5rem' }}>{PACKAGE_ICONS[key]}</div>
-              <div style={{ fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem' }}>
                 {pkg.label}
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-subtle)', lineHeight: 1.45 }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                 {PACKAGE_DESCRIPTIONS[key]}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

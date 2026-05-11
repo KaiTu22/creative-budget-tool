@@ -80,6 +80,79 @@ function ProjectDetailsCard({ project }) {
   )
 }
 
+function StatPill({ label, value, sub, accent, highlight }) {
+  let bg      = highlight ? '#eff6ff' : accent ? 'var(--navy-light)' : 'var(--bg)'
+  let border  = highlight ? '#0064ff' : accent ? '#c7d2fe' : 'var(--border)'
+  let color   = highlight ? 'var(--accent)' : accent ? 'var(--primary)' : 'var(--text)'
+  let borderW = highlight ? '2px' : '1px'
+
+  return (
+    <div style={{
+      background: bg,
+      border: `${borderW} solid ${border}`,
+      borderRadius: '8px', padding: '0.75rem 1rem', minWidth: '130px', flex: 1,
+    }}>
+      <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: highlight ? 'var(--accent)' : 'var(--text-subtle)', marginBottom: '0.2rem' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: '1rem', fontWeight: 800, color, letterSpacing: '-0.02em' }}>{value}</div>
+      {sub && <div style={{ fontSize: '0.7rem', color: highlight ? '#60a5fa' : 'var(--text-muted)', marginTop: '0.15rem' }}>{sub}</div>}
+    </div>
+  )
+}
+
+function WorkingBar({ working, nonWorking, total }) {
+  if (!total || total === 0) return null
+  const workingPct    = Math.round((working / total) * 100)
+  const nonWorkingPct = 100 - workingPct
+
+  return (
+    <div style={{ marginTop: '0.75rem', marginBottom: '1.25rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)' }}>
+          Working vs Non-Working
+        </span>
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-subtle)' }}>
+          {formatCurrency(total)} total
+        </span>
+      </div>
+      <div style={{ height: '8px', borderRadius: '4px', background: 'var(--border)', overflow: 'hidden', display: 'flex' }}>
+        {workingPct > 0 && (
+          <div style={{
+            width: `${workingPct}%`,
+            background: 'var(--accent)',
+            borderRadius: nonWorkingPct > 0 ? '4px 0 0 4px' : '4px',
+            transition: 'width 0.3s ease',
+          }} />
+        )}
+        {nonWorkingPct > 0 && (
+          <div style={{
+            width: `${nonWorkingPct}%`,
+            background: '#e2e8f0',
+            borderRadius: workingPct > 0 ? '0 4px 4px 0' : '4px',
+          }} />
+        )}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.3rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--accent)' }} />
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            Working {workingPct}% · {formatCurrency(working)}
+          </span>
+        </div>
+        {nonWorking > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              Non-Working {nonWorkingPct}% · {formatCurrency(nonWorking)}
+            </span>
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#e2e8f0' }} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown }) {
   const [expanded, setExpanded] = useState(false)
   const typeLabel = PACKAGE_TYPES[pkg.type]?.label || pkg.type
@@ -113,7 +186,7 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
           >▼</button>
         </div>
 
-        {/* Title — clickable to expand */}
+        {/* Title */}
         <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setExpanded(v => !v)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
@@ -126,7 +199,7 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
           </div>
         </div>
 
-        {/* Right side: total + actions */}
+        {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ textAlign: 'right', cursor: 'pointer' }} onClick={() => setExpanded(v => !v)}>
             <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>
@@ -135,16 +208,11 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>total investment</div>
           </div>
           <div style={{ display: 'flex', gap: '0.35rem' }}>
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={onEdit}
-            >Edit</button>
+            <button className="btn btn-secondary btn-sm" onClick={onEdit}>Edit</button>
             <button
               className="btn btn-ghost btn-sm"
               style={{ color: 'var(--danger)' }}
-              onClick={() => {
-                if (confirm(`Delete "${pkg.title}"? This cannot be undone.`)) onDelete()
-              }}
+              onClick={() => { if (confirm(`Delete "${pkg.title}"? This cannot be undone.`)) onDelete() }}
             >Delete</button>
           </div>
           <span style={{ color: 'var(--text-muted)', cursor: 'pointer' }} onClick={() => setExpanded(v => !v)}>
@@ -156,24 +224,54 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
       {/* Expanded detail */}
       {expanded && (
         <div style={{ padding: '1.25rem', borderTop: '1px solid var(--border)' }}>
-          {/* Stats */}
+
+          {/* Working/Non-Working bar — always first */}
+          <WorkingBar
+            working={pkg.workingAmount ?? 0}
+            nonWorking={pkg.nonWorkingAmount ?? 0}
+            total={pkg.totalInvestment ?? 0}
+          />
+
+          {/* Stats — type-specific */}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
-            <StatPill label="Total Investment"     value={formatCurrency(pkg.totalInvestment)} accent />
-            {pkg.mediaInvestment != null && (
-              <StatPill label="Media Investment"   value={formatCurrency(pkg.mediaInvestment)} sub={formatPct(pkg.mediaPct) + ' of total'} />
-            )}
-            {pkg.ptInvestment != null && pkg.type !== 'blendedSocial' && (
-              <StatPill label="P&T Investment"     value={formatCurrency(pkg.ptInvestment)}    sub={formatPct(1 - pkg.mediaPct) + ' of total'} />
-            )}
-            {pkg.marginAmount != null && pkg.type === 'blendedSocial' && (
-              <StatPill label="Margin"             value={formatCurrency(pkg.marginAmount)}    sub={formatPct(pkg.marginPct) + ' off top'} />
-            )}
-            {pkg.ptCost != null && (
-              <StatPill label="Internal P&T Budget" value={formatCurrency(pkg.ptCost)}         sub={pkg.type === 'blendedSocial' ? 'After margin' : 'After ' + Math.round((pkg.markupPct || 0) * 100) + '% markup'} accent />
-            )}
-            {pkg.ptMargin != null && pkg.type !== 'blendedSocial' && (
-              <StatPill label="Margin"             value={formatCurrency(pkg.ptMargin)}        sub={formatPct(pkg.ptMarginPct)} />
-            )}
+            <StatPill label="Total Investment" value={formatCurrency(pkg.totalInvestment)} accent />
+
+            {(pkg.type === 'influencer' || pkg.type === 'brandedContent') && <>
+              <StatPill label="Media %" value={formatPct(pkg.mediaPct)} sub={formatCurrency(pkg.mediaInvestment)} highlight />
+              <StatPill label="P&T Investment" value={formatCurrency(pkg.ptInvestment)} sub={formatPct(1 - pkg.mediaPct) + ' of total'} />
+              <StatPill label="Internal P&T Budget" value={formatCurrency(pkg.ptCost)} sub={'After ' + Math.round((pkg.markupPct || 0) * 100) + '% markup'} accent />
+              <StatPill label="Margin" value={formatCurrency(pkg.ptMargin)} sub={formatPct(pkg.ptMarginPct)} />
+            </>}
+
+            {pkg.type === 'blendedSocial' && <>
+              <StatPill label="Margin" value={formatCurrency(pkg.marginAmount)} sub={formatPct(pkg.marginPct) + ' off top'} />
+              <StatPill label="Media" value={formatCurrency(pkg.mediaInvestment)} sub={formatPct(pkg.mediaPct) + ' of total'} />
+              <StatPill label="P&T Budget" value={formatCurrency(pkg.ptCost)} sub="After margin" accent />
+            </>}
+
+            {['paidDistribution', 'streaming', 'linear', 'socialSponsorship', 'sponsorship'].includes(pkg.type) && <>
+              {pkg.cpm && <StatPill label="CPM" value={'$' + pkg.cpm} />}
+              {pkg.cpv && <StatPill label="CPV" value={'$' + pkg.cpv} />}
+              {pkg.impressions && <StatPill label="Est. Impressions" value={pkg.impressions.toLocaleString()} />}
+              {pkg.views && <StatPill label="Est. Views" value={pkg.views.toLocaleString()} />}
+            </>}
+
+            {pkg.type === 'fees' && <>
+              {pkg.feeTypeLabel && <StatPill label="Fee Type" value={pkg.feeTypeLabel} />}
+            </>}
+
+            {pkg.type === 'talentProduction' && <>
+              <StatPill label="Internal P&T Budget" value={formatCurrency(pkg.ptCost)} sub={'After ' + Math.round((pkg.markupPct || 0) * 100) + '% markup'} accent />
+              <StatPill label="Margin" value={formatCurrency(pkg.ptMargin)} sub={formatPct(pkg.ptMarginPct)} />
+            </>}
+
+            {pkg.type === 'addedValue' && <>
+              <StatPill label="Internal Cost" value={formatCurrency(pkg.internalCost)} />
+              <StatPill label="Client Value" value={formatCurrency(pkg.clientValue)} accent />
+              {pkg.internalCost > 0 && pkg.clientValue > 0 && (
+                <StatPill label="Multiplier" value={(pkg.clientValue / pkg.internalCost).toFixed(1) + 'x'} />
+              )}
+            </>}
           </div>
 
           {/* Platforms */}
@@ -190,21 +288,6 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
             </div>
           )}
 
-          {/* Working / Non-Working */}
-          <div style={{ marginBottom: '1.25rem' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.5rem' }}>Working vs. Non-Working</div>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <div style={{ flex: 1, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '0.6rem 0.875rem' }}>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Working</div>
-                <div style={{ fontWeight: 700, color: '#15803d' }}>{formatCurrency(pkg.workingAmount)}</div>
-              </div>
-              <div style={{ flex: 1, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '6px', padding: '0.6rem 0.875rem' }}>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Non-Working</div>
-                <div style={{ fontWeight: 700, color: '#92400e' }}>{formatCurrency(pkg.nonWorkingAmount)}</div>
-              </div>
-            </div>
-          </div>
-
           {/* Cost lines */}
           {pkg.costLines?.length > 0 && (
             <div style={{ marginBottom: '1.25rem' }}>
@@ -214,19 +297,32 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
                   {pkg.costLines.map(line => {
                     const label = line.type === 'other' ? (line.customLabel || 'Other') : line.type.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())
                     const sagRate = { digital: 0.20, linear: 0.50, linear_digital: 0.34 }[line.sagType] || 0
-                    const total = line.type === 'talent'
+                    const lineTotal = line.type === 'talent'
                       ? line.costPerUnit * line.qty * (1 + sagRate)
                       : line.costPerUnit * line.qty
                     return (
                       <tr key={line.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                         <td style={{ padding: '0.35rem 0', color: 'var(--text-secondary)' }}>{label}</td>
                         <td style={{ padding: '0.35rem 0', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{line.qty > 1 ? `${line.qty}x` : ''} {line.notes || ''}</td>
-                        <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(total)}</td>
+                        <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(lineTotal)}</td>
                       </tr>
                     )
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Plan link */}
+          {pkg.planLink && (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.4rem' }}>Pre-Built Plan</div>
+              <button
+                onClick={() => window.open(pkg.planLink, '_blank')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: '0.84rem', padding: 0, textDecoration: 'underline' }}
+              >
+                Open plan →
+              </button>
             </div>
           )}
 
@@ -247,22 +343,9 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
               )}
             </div>
           )}
+
         </div>
       )}
-    </div>
-  )
-}
-
-function StatPill({ label, value, sub, accent }) {
-  return (
-    <div style={{
-      background: accent ? 'var(--navy-light)' : 'var(--bg)',
-      border: `1px solid ${accent ? '#c7d2fe' : 'var(--border)'}`,
-      borderRadius: '8px', padding: '0.75rem 1rem', minWidth: '130px', flex: 1,
-    }}>
-      <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>{label}</div>
-      <div style={{ fontSize: '1rem', fontWeight: 800, color: accent ? 'var(--primary)' : 'var(--text)', letterSpacing: '-0.02em' }}>{value}</div>
-      {sub && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{sub}</div>}
     </div>
   )
 }
@@ -295,7 +378,6 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
             <h1>{version?.name}</h1>
             <p>{project?.brandName} · {project?.projectName} · {project?.agencyName}</p>
           </div>
-          {/* View mode switcher */}
           <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.25rem' }}>
             {[
               { key: 'working',      label: 'Working View' },
@@ -315,10 +397,8 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
         </div>
       </div>
 
-      {/* Project details card */}
       <ProjectDetailsCard project={project} />
 
-      {/* Version totals */}
       {packages.length > 0 && (
         <div className="card" style={{ background: 'var(--primary)', border: 'none', marginBottom: '1rem' }}>
           <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
@@ -331,10 +411,10 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
             {[
-              { label: 'Media Investment',   value: formatCurrency(totals.totalMediaInvest),    sub: formatPct(mediaPctTotal) + ' of total' },
-              { label: 'P&T Investment',     value: formatCurrency(totals.totalPTInvest),       sub: formatPct(1 - mediaPctTotal) + ' of total' },
-              { label: 'Internal P&T Budget',value: formatCurrency(totals.totalInternalBudget), sub: 'Available to spend' },
-              { label: 'Packages',           value: packages.length,                            sub: 'in this version' },
+              { label: 'Media Investment',    value: formatCurrency(totals.totalMediaInvest),    sub: formatPct(mediaPctTotal) + ' of total' },
+              { label: 'P&T Investment',      value: formatCurrency(totals.totalPTInvest),       sub: formatPct(1 - mediaPctTotal) + ' of total' },
+              { label: 'Internal P&T Budget', value: formatCurrency(totals.totalInternalBudget), sub: 'Available to spend' },
+              { label: 'Packages',            value: packages.length,                            sub: 'in this version' },
             ].map(m => (
               <div key={m.label} style={{ flex: 1, minWidth: '130px', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '0.75rem 1rem' }}>
                 <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.5)', marginBottom: '0.2rem' }}>{m.label}</div>
@@ -368,7 +448,6 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
         </div>
       )}
 
-      {/* Package cards */}
       {packages.length === 0 ? (
         <div className="empty-state card">
           <h3>No packages yet</h3>

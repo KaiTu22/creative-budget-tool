@@ -13,6 +13,7 @@ import {
   formatPct,
 } from '../data/calculations'
 import BudgetWorkbench from '../components/BudgetWorkbench'
+import CurrencyInput from '../components/CurrencyInput'
 
 function SectionHeader({ title }) {
   return (
@@ -28,15 +29,15 @@ function SectionHeader({ title }) {
 }
 
 function StatBox({ label, value, sub, accent, warning }) {
-  let bg      = accent  ? 'var(--navy-light)' : warning ? 'var(--warning-light)' : 'var(--bg)'
-  let border  = accent  ? '#c7d2fe'           : warning ? '#fde68a'              : 'var(--border)'
-  let valColor= accent  ? 'var(--primary)'    : warning ? 'var(--warning)'       : 'var(--text)'
+  let bg     = accent ? 'var(--navy-light)' : warning ? 'var(--warning-light)' : 'var(--bg)'
+  let border = accent ? '#c7d2fe'           : warning ? '#fde68a'              : 'var(--border)'
+  let color  = accent ? 'var(--primary)'    : warning ? 'var(--warning)'       : 'var(--text)'
   return (
     <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: '8px', padding: '0.875rem', flex: 1 }}>
       <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.25rem' }}>
         {label}
       </div>
-      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: valColor, letterSpacing: '-0.02em' }}>
+      <div style={{ fontSize: '1.1rem', fontWeight: 800, color, letterSpacing: '-0.02em' }}>
         {value}
       </div>
       {sub && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{sub}</div>}
@@ -44,31 +45,40 @@ function StatBox({ label, value, sub, accent, warning }) {
   )
 }
 
-export default function BlendedSocialForm({ onSave, onCancel }) {
-  const [title, setTitle]               = useState('')
-  const [totalInvestment, setTotalInvestment] = useState('')
-  const [marginPct, setMarginPct]       = useState(DEFAULTS.blendedMargin)
-  const [mediaPct, setMediaPct]         = useState(DEFAULTS.blendedMedia)
-  const [mediaMode, setMediaMode]       = useState('pct')
-  const [campaignType, setCampaignType] = useState(BLENDED_CAMPAIGN_TYPES[0].value)
-  const [costLines, setCostLines]       = useState([])
-  const [platforms, setPlatforms]       = useState([{ id: crypto.randomUUID(), platform: 'instagram' }])
-  const [creativeAssets, setCreativeAssets] = useState('')
-  const [notes, setNotes]               = useState('')
-  const [showRefTable, setShowRefTable] = useState(false)
-  const [titleError, setTitleError]     = useState(false)
+export default function BlendedSocialForm({ existingPackage, onSave, onCancel }) {
+  const ep = existingPackage
+
+  const [title, setTitle]                     = useState(ep?.title || '')
+  const [totalInvestment, setTotalInvestment] = useState(ep?.totalInvestment || '')
+  const [marginPct, setMarginPct]             = useState(ep?.marginPct || DEFAULTS.blendedMargin)
+  const [mediaPct, setMediaPct]               = useState(ep?.mediaPct || DEFAULTS.blendedMedia)
+  const [mediaMode, setMediaMode]             = useState('pct')
+  const [campaignType, setCampaignType]       = useState(ep?.campaignType || BLENDED_CAMPAIGN_TYPES[0].value)
+  const [costLines, setCostLines]             = useState(ep?.costLines || [])
+  const [platforms, setPlatforms]             = useState(ep?.platforms || [{ id: crypto.randomUUID(), platform: 'instagram' }])
+  const [creativeAssets, setCreativeAssets]   = useState(ep?.creativeAssets || '')
+  const [notes, setNotes]                     = useState(ep?.notes || '')
+  const [showRefTable, setShowRefTable]       = useState(false)
+  const [errors, setErrors]                   = useState({})
 
   const investment = parseFloat(totalInvestment) || 0
+
+  const isDirty = !!(title || totalInvestment)
+
+  function handleCancel() {
+    if (isDirty && !window.confirm('You have unsaved changes. Are you sure you want to leave?')) return
+    onCancel()
+  }
 
   const calc = useMemo(() => {
     if (!investment) return null
     return calcBlendedSplit(investment, marginPct, mediaPct)
   }, [investment, marginPct, mediaPct])
 
-  // ── Media split handlers ──
   function handleMediaPctChange(val) {
     const n = parseFloat(val) || 0
     setMediaPct(n > 1 ? n / 100 : n)
+    setErrors(prev => ({ ...prev, mediaPct: null }))
   }
 
   function handleMediaDollarChange(val) {
@@ -76,7 +86,6 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
     if (investment > 0) setMediaPct(mediaAmountToPct(n, investment))
   }
 
-  // ── Platform handlers ──
   function addPlatform() {
     setPlatforms(prev => [...prev, { id: crypto.randomUUID(), platform: 'instagram' }])
   }
@@ -87,7 +96,6 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
     setPlatforms(prev => prev.filter(p => p.id !== id))
   }
 
-  // ── Validation helpers ──
   function pctSum() {
     return Math.round((marginPct + mediaPct) * 100)
   }
@@ -96,9 +104,14 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
     return pctSum() < 100
   }
 
-  // ── Save ──
   function handleSave() {
-    if (!title.trim()) { setTitleError(true); return }
+    const e = {}
+    if (!title.trim())     e.title = 'Required'
+    if (!investment)       e.investment = 'Required'
+    if (!mediaPct)         e.mediaPct = 'Required'
+    if (!platforms.length) e.platforms = 'At least one platform is required'
+    setErrors(e)
+    if (Object.keys(e).length > 0) return
     if (!calc) return
     if (!isSumValid()) return
     onSave({
@@ -130,10 +143,10 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
   return (
     <div className="page" style={{ maxWidth: '920px' }}>
       <div className="page-header">
-        <button className="btn btn-ghost btn-sm" onClick={onCancel} style={{ marginBottom: '0.75rem', padding: '0.2rem 0.5rem' }}>
+        <button className="btn btn-ghost btn-sm" onClick={handleCancel} style={{ marginBottom: '0.75rem', padding: '0.2rem 0.5rem' }}>
           ← Back
         </button>
-        <h1>New Blended Social Package</h1>
+        <h1>{existingPackage ? 'Edit' : 'New'} Blended Social Package</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.25rem' }}>
           Margin is taken off the top first, then media %. All investment is Working.
         </p>
@@ -149,11 +162,11 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
             <input
               type="text"
               value={title}
-              onChange={e => { setTitle(e.target.value); setTitleError(false) }}
+              onChange={e => { setTitle(e.target.value); setErrors(prev => ({ ...prev, title: null })) }}
               placeholder="e.g. Blended Social Package – Q3"
-              style={titleError ? { borderColor: 'var(--danger)' } : {}}
+              style={errors.title ? { borderColor: 'var(--danger)' } : {}}
             />
-            {titleError && <span style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>Title is required</span>}
+            {errors.title && <span style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>{errors.title}</span>}
           </div>
 
           <div className="form-group">
@@ -166,14 +179,13 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
           </div>
 
           <div className="form-group">
-            <label>Total Investment</label>
-            <input
-              type="number"
-              min="0"
+            <label>Total Investment <span style={{ color: 'var(--danger)' }}>*</span></label>
+            <CurrencyInput
               value={totalInvestment}
-              onChange={e => setTotalInvestment(e.target.value)}
-              placeholder="e.g. 250000"
+              onChange={val => { setTotalInvestment(val); setErrors(prev => ({ ...prev, investment: null })) }}
+              error={!!errors.investment}
             />
+            {errors.investment && <span style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>{errors.investment}</span>}
           </div>
         </div>
 
@@ -215,7 +227,8 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
             <div className="form-group">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
                 <label style={{ margin: 0 }}>
-                  Media % <span style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', fontWeight: 400 }}>(default 24%)</span>
+                  Media % <span style={{ color: 'var(--danger)' }}>*</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', fontWeight: 400, marginLeft: '0.25rem' }}>(default 24%)</span>
                 </label>
                 <div style={{ display: 'flex', gap: '0.35rem' }}>
                   <button
@@ -235,24 +248,22 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
                   max="100"
                   value={Math.round(mediaPct * 100)}
                   onChange={e => handleMediaPctChange(e.target.value)}
-                  style={!isSumValid() ? { borderColor: 'var(--danger)' } : {}}
+                  style={(!isSumValid() || errors.mediaPct) ? { borderColor: 'var(--danger)' } : {}}
                 />
               ) : (
-                <input
-                  type="number"
-                  min="0"
+                <CurrencyInput
                   value={investment > 0 ? Math.round(mediaPctToAmount(mediaPct, investment)) : ''}
-                  onChange={e => handleMediaDollarChange(e.target.value)}
-                  placeholder="Enter media amount"
+                  onChange={handleMediaDollarChange}
                 />
               )}
+              {errors.mediaPct && <span style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>{errors.mediaPct}</span>}
             </div>
           </div>
 
           {/* Over 100% warning */}
           {!isSumValid() && (
             <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'var(--danger-light)', border: '1px solid #fca5a5', borderRadius: '6px', fontSize: '0.82rem', color: 'var(--danger)' }}>
-              ⚠️ Margin ({Math.round(marginPct * 100)}%) + Media ({Math.round(mediaPct * 100)}%) = {pctSum()}% — must be less than 100% to leave a P&T budget.
+              ⚠️ Margin ({Math.round(marginPct * 100)}%) + Media ({Math.round(mediaPct * 100)}%) = {pctSum()}% — must be less than 100%.
             </div>
           )}
 
@@ -312,28 +323,10 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
         {/* Live calc summary */}
         {calc && isSumValid() && (
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <StatBox
-              label="Total Investment"
-              value={formatCurrency(calc.totalInvestment)}
-              accent
-            />
-            <StatBox
-              label="Margin"
-              value={formatCurrency(calc.marginAmount)}
-              sub={formatPct(marginPct) + ' — off the top'}
-              warning
-            />
-            <StatBox
-              label="Media Investment"
-              value={formatCurrency(calc.mediaAmount)}
-              sub={formatPct(mediaPct) + ' of total'}
-            />
-            <StatBox
-              label="P&T Budget"
-              value={formatCurrency(calc.ptBudget)}
-              sub={formatPct(1 - marginPct - mediaPct) + ' of total · all working'}
-              accent
-            />
+            <StatBox label="Total Investment" value={formatCurrency(calc.totalInvestment)} accent />
+            <StatBox label="Margin"           value={formatCurrency(calc.marginAmount)}    sub={formatPct(marginPct) + ' — off the top'} warning />
+            <StatBox label="Media"            value={formatPct(mediaPct)}                  sub={formatCurrency(calc.mediaAmount)} />
+            <StatBox label="P&T Budget"       value={formatCurrency(calc.ptBudget)}        sub={formatPct(1 - marginPct - mediaPct) + ' of total · all working'} accent />
           </div>
         )}
 
@@ -344,7 +337,7 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
             background: '#f0fdf4', border: '1px solid #bbf7d0',
             borderRadius: '6px', fontSize: '0.8rem', color: '#15803d', fontWeight: 600,
           }}>
-            ✓ All {formatCurrency(calc.totalInvestment)} is classified as Working — Blended Social has no Non-Working investment.
+            ✓ All {formatCurrency(calc.totalInvestment)} is classified as Working
           </div>
         )}
       </div>
@@ -373,6 +366,11 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
         <div style={{ marginBottom: '0.75rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
           Blended Social uses Paramount-managed handles only.
         </div>
+        {errors.platforms && (
+          <div style={{ fontSize: '0.78rem', color: 'var(--danger)', marginBottom: '0.5rem' }}>
+            {errors.platforms}
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
           {platforms.map(p => (
             <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '100px 180px 1fr 36px', gap: '0.5rem', alignItems: 'center' }}>
@@ -431,15 +429,15 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
       </div>
 
       <div className="sticky-bottom">
-        <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-        {!investment && (
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Enter a total investment to save
-          </span>
-        )}
+        <button className="btn btn-secondary" onClick={handleCancel}>Cancel</button>
         {investment > 0 && !isSumValid() && (
           <span style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>
             Margin + Media % must be less than 100%
+          </span>
+        )}
+        {!investment && (
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Enter a total investment to save
           </span>
         )}
         <button
@@ -447,7 +445,7 @@ export default function BlendedSocialForm({ onSave, onCancel }) {
           onClick={handleSave}
           disabled={!investment || !isSumValid()}
         >
-          Save Package →
+          {existingPackage ? 'Save Changes →' : 'Save Package →'}
         </button>
       </div>
     </div>

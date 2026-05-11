@@ -108,8 +108,9 @@ export function calcLineItemTotal(line) {
   return base
 }
 
-export function calcWorkbenchTotals(lines, availableBudget) {
-  const allocated = lines.reduce((sum, l) => sum + calcLineItemTotal(l), 0)
+export function calcWorkbenchTotals(lines, availableBudget, calcFn) {
+  const fn = calcFn || calcLineItemTotal
+  const allocated = lines.reduce((sum, l) => sum + fn(l), 0)
   const remaining = availableBudget - allocated
   return { allocated, remaining, isOverBudget: remaining < 0 }
 }

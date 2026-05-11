@@ -7,6 +7,11 @@ import VersionList from './screens/VersionList'
 import PackageTypeSelector from './screens/PackageTypeSelector'
 import InfluencerForm from './screens/InfluencerForm'
 import BlendedSocialForm from './screens/BlendedSocialForm'
+import SimpleMediaForm from './screens/SimpleMediaForm'
+import FeesForm from './screens/FeesForm'
+import TalentProductionForm from './screens/TalentProductionForm'
+import AddedValueForm from './screens/AddedValueForm'
+import SponsorshipForm from './screens/SponsorshipForm'
 import VersionSummary from './screens/VersionSummary'
 
 import {
@@ -27,7 +32,6 @@ export default function App() {
   const [selectedPackageType, setSelectedPackageType] = useState('influencer')
   const [editingPackage, setEditingPackage]   = useState(null)
 
-  // ── Derived objects ──
   const activeProject = projects.find(p => p.id === activeProjectId) || null
   const activeVersion = versions.find(v => v.id === activeVersionId) || null
 
@@ -39,7 +43,6 @@ export default function App() {
     ? { ...activeProject, versions: versions.filter(v => v.projectId === activeProjectId) }
     : null
 
-  // ── Initial load ──
   useEffect(() => { loadProjects() }, [])
 
   async function loadProjects() {
@@ -57,7 +60,6 @@ export default function App() {
   async function loadVersions(projectId) {
     try {
       const data = await fetchVersions(projectId)
-      console.log('Loaded versions:', data)
       setVersions(data)
     } catch (e) {
       console.error('Failed to load versions:', e)
@@ -67,7 +69,6 @@ export default function App() {
   async function loadPackages(versionId) {
     try {
       const data = await fetchPackages(versionId)
-      console.log('Loaded packages for version', versionId, data)
       setPackages(data)
     } catch (e) {
       console.error('Failed to load packages:', e)
@@ -102,7 +103,6 @@ export default function App() {
   async function handleCreateVersion(data) {
     try {
       const version = await dbCreateVersion(activeProjectId, data)
-      console.log('Created version:', version)
       setVersions(prev => [version, ...prev])
       setActiveVersionId(version.id)
       setPackages([])
@@ -138,9 +138,7 @@ export default function App() {
       } else {
         const position = currentPackages.length
         const created  = await dbCreatePackage(activeVersionId, packageData, position)
-        console.log('Created package:', created)
         setPackages(prev => [...prev, { ...created, versionId: activeVersionId }])
-        // Update package count on the version in state
         setVersions(prev => prev.map(v =>
           v.id === activeVersionId
             ? { ...v, packageCount: (v.packageCount ?? 0) + 1 }
@@ -158,7 +156,6 @@ export default function App() {
     try {
       await dbDeletePackage(packageId)
       setPackages(prev => prev.filter(p => p.id !== packageId))
-      // Update package count on the version in state
       setVersions(prev => prev.map(v =>
         v.id === activeVersionId
           ? { ...v, packageCount: Math.max((v.packageCount ?? 1) - 1, 0) }
@@ -188,11 +185,22 @@ export default function App() {
   function startEdit(pkg) {
     setEditingPackage(pkg)
     setSelectedPackageType(pkg.type)
-    if (pkg.type === 'blendedSocial') setScreen('blendedSocialForm')
-    else setScreen('influencerForm')
+    const screenMap = {
+      influencer:        'influencerForm',
+      brandedContent:    'influencerForm',
+      blendedSocial:     'blendedSocialForm',
+      paidDistribution:  'simpleMediaForm',
+      streaming:         'simpleMediaForm',
+      linear:            'simpleMediaForm',
+      socialSponsorship: 'simpleMediaForm',
+      fees:              'feesForm',
+      talentProduction:  'talentProductionForm',
+      addedValue:        'addedValueForm',
+      sponsorship:       'sponsorshipForm',
+    }
+    setScreen(screenMap[pkg.type] || 'influencerForm')
   }
 
-  // ── Navigation ──
   async function openProject(project) {
     setActiveProjectId(project.id)
     setPackages([])
@@ -201,51 +209,63 @@ export default function App() {
   }
 
   async function openVersion(version) {
-    console.log('Opening version:', version.id)
     setActiveVersionId(version.id)
     await loadPackages(version.id)
     setScreen('versionSummary')
   }
 
-  // ── Header ──
   function Header() {
     return (
       <header className="app-header">
-        <div
-          className="app-logo"
-          onClick={() => {
-            setScreen('projectList')
-            setActiveProjectId(null)
-            setActiveVersionId(null)
-          }}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className="app-logo-box">BT</div>
-          <div>
-            <div className="app-logo-text">Creative Budget Tool</div>
+        <div className="app-logo" onClick={() => { setScreen('projectList'); setActiveProjectId(null); setActiveVersionId(null) }} style={{ cursor: 'pointer' }}>
+          <div className="app-logo-mountain">
+            <svg viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="45,8 82,75 8,75" fill="none" stroke="white" strokeWidth="3.5"/>
+              <polygon points="45,8 65,45 25,45" fill="white" opacity="0.15"/>
+              <line x1="45" y1="8" x2="45" y2="75" stroke="white" strokeWidth="1" opacity="0.3"/>
+            </svg>
+          </div>
+          <div className="app-logo-text-group">
+            <div className="app-logo-headline">Creative Budget Tool</div>
             <div className="app-logo-sub">Paramount Skydance</div>
           </div>
         </div>
         <nav className="breadcrumb">
-          {activeProject && <>
-            <span
-              onClick={() => setScreen('versionList')}
-              style={{ cursor: 'pointer', opacity: 0.6 }}
-            >
+          {activeProject && (
+            <span onClick={() => setScreen('versionList')} style={{ cursor: 'pointer', opacity: 0.7 }}>
               {activeProject.brandName}
             </span>
-          </>}
+          )}
           {activeVersion && <>
             <span className="sep">›</span>
-            <span>{activeVersion.name}</span>
+            <span style={{ color: 'white' }}>{activeVersion.name}</span>
           </>}
         </nav>
       </header>
     )
   }
 
-  // ── Loading state ──
-  if (loading) {
+ 
+
+  function selectPackageType(type) {
+    setEditingPackage(null)
+    setSelectedPackageType(type)
+    const screenMap = {
+      influencer:        'influencerForm',
+      brandedContent:    'influencerForm',
+      blendedSocial:     'blendedSocialForm',
+      paidDistribution:  'simpleMediaForm',
+      streaming:         'simpleMediaForm',
+      linear:            'simpleMediaForm',
+      socialSponsorship: 'simpleMediaForm',
+      fees:              'feesForm',
+      talentProduction:  'talentProductionForm',
+      addedValue:        'addedValueForm',
+      sponsorship:       'sponsorshipForm',
+    }
+    setScreen(screenMap[type] || 'influencerForm')
+  }
+ if (loading) {
     return (
       <>
         <Header />
@@ -255,8 +275,6 @@ export default function App() {
       </>
     )
   }
-
-  // ── Router ──
   return (
     <>
       <Header />
@@ -294,12 +312,7 @@ export default function App() {
       {screen === 'packageTypeSelector' && (
         <PackageTypeSelector
           version={activeVersion}
-          onSelect={(type) => {
-            setEditingPackage(null)
-            setSelectedPackageType(type)
-            if (type === 'blendedSocial') setScreen('blendedSocialForm')
-            else if (type === 'influencer' || type === 'brandedContent') setScreen('influencerForm')
-          }}
+          onSelect={selectPackageType}
           onBack={() => setScreen('versionSummary')}
         />
       )}
@@ -318,6 +331,62 @@ export default function App() {
 
       {screen === 'blendedSocialForm' && (
         <BlendedSocialForm
+          existingPackage={editingPackage}
+          onSave={handleSavePackage}
+          onCancel={() => {
+            setEditingPackage(null)
+            setScreen(editingPackage ? 'versionSummary' : 'packageTypeSelector')
+          }}
+        />
+      )}
+
+      {screen === 'simpleMediaForm' && (
+        <SimpleMediaForm
+          packageType={selectedPackageType}
+          existingPackage={editingPackage}
+          onSave={handleSavePackage}
+          onCancel={() => {
+            setEditingPackage(null)
+            setScreen(editingPackage ? 'versionSummary' : 'packageTypeSelector')
+          }}
+        />
+      )}
+
+      {screen === 'feesForm' && (
+        <FeesForm
+          existingPackage={editingPackage}
+          onSave={handleSavePackage}
+          onCancel={() => {
+            setEditingPackage(null)
+            setScreen(editingPackage ? 'versionSummary' : 'packageTypeSelector')
+          }}
+        />
+      )}
+
+      {screen === 'talentProductionForm' && (
+        <TalentProductionForm
+          existingPackage={editingPackage}
+          onSave={handleSavePackage}
+          onCancel={() => {
+            setEditingPackage(null)
+            setScreen(editingPackage ? 'versionSummary' : 'packageTypeSelector')
+          }}
+        />
+      )}
+
+      {screen === 'addedValueForm' && (
+        <AddedValueForm
+          existingPackage={editingPackage}
+          onSave={handleSavePackage}
+          onCancel={() => {
+            setEditingPackage(null)
+            setScreen(editingPackage ? 'versionSummary' : 'packageTypeSelector')
+          }}
+        />
+      )}
+
+      {screen === 'sponsorshipForm' && (
+        <SponsorshipForm
           existingPackage={editingPackage}
           onSave={handleSavePackage}
           onCancel={() => {
