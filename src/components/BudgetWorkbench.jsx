@@ -165,7 +165,7 @@ export default function BudgetWorkbench({ availableBudget, lines, onChange }) {
                     type="number"
                     min="1"
                     value={line.qty}
-                    onChange={e => updateLine(line.id, 'qty', parseInt(e.target.value) || 1)}
+                  onChange={e => updateLine(line.id, 'qty', parseInt(e.target.value) || 0)}
                     style={{ fontSize: '0.82rem', textAlign: 'center' }}
                   />
                 </div>
