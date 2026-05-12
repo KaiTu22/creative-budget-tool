@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-function ProjectDetailsCard({ project }) {
+function ProjectDetailsCard({ project, onEditProject }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -25,9 +25,9 @@ function ProjectDetailsCard({ project }) {
           {[
             ['Sales Lead', project?.salesLead],
             ['Pitch Lead', project?.pitchLead],
-            ['Due Date', project?.planDueDate],
-            ['Template', project?.template === 'paramount' ? 'Paramount' : 'Agency'],
-            ['Audience', project?.targetAudience],
+            ['Due Date',   project?.planDueDate],
+            ['Template',   project?.template === 'paramount' ? 'Paramount' : 'Agency'],
+            ['Audience',   project?.targetAudience],
           ].map(([label, value]) => (
             <div key={label}>
               <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)' }}>{label}</div>
@@ -35,18 +35,26 @@ function ProjectDetailsCard({ project }) {
             </div>
           ))}
         </div>
-        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', marginLeft: '1rem' }}>
-          {expanded ? 'Hide details ▲' : 'Show details ▼'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '1rem' }} onClick={e => e.stopPropagation()}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={onEditProject}
+          >
+            Edit Project
+          </button>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', cursor: 'pointer' }} onClick={() => setExpanded(v => !v)}>
+            {expanded ? 'Hide details ▲' : 'Show details ▼'}
+          </span>
+        </div>
       </div>
 
       {expanded && (
         <div style={{ padding: '1.25rem', borderTop: '1px solid #c7d2fe' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
             {[
-              ['Agency', project?.agencyName],
-              ['Campaign Start', project?.campaignStart || '—'],
-              ['Campaign End', project?.campaignEnd || '—'],
+              ['Agency',          project?.agencyName],
+              ['Campaign Start',  project?.campaignStart || '—'],
+              ['Campaign End',    project?.campaignEnd   || '—'],
               ['Salesforce Link', project?.salesforceLink || '—'],
             ].map(([label, value]) => (
               <div key={label}>
@@ -65,11 +73,11 @@ function ProjectDetailsCard({ project }) {
   )
 }
 
-export default function VersionList({ project, onNewVersion, onDeleteVersion, onOpenVersion, onBack }) {
-  const [showForm, setShowForm] = useState(false)
+export default function VersionList({ project, onNewVersion, onDeleteVersion, onOpenVersion, onBack, onEditProject }) {
+  const [showForm, setShowForm]       = useState(false)
   const [versionName, setVersionName] = useState('')
   const [versionNotes, setVersionNotes] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError]             = useState('')
 
   function handleCreate() {
     if (!versionName.trim()) { setError('Version name is required'); return }
@@ -95,7 +103,7 @@ export default function VersionList({ project, onNewVersion, onDeleteVersion, on
         <button className="btn btn-accent" onClick={() => setShowForm(true)}>+ New Version</button>
       </div>
 
-      <ProjectDetailsCard project={project} />
+      <ProjectDetailsCard project={project} onEditProject={onEditProject} />
 
       {showForm && (
         <div className="card" style={{ border: '2px solid var(--accent)', marginBottom: '1rem' }}>
@@ -130,7 +138,7 @@ export default function VersionList({ project, onNewVersion, onDeleteVersion, on
         </div>
       )}
 
-      {project?.versions.length === 0 && !showForm && (
+      {project?.versions?.length === 0 && !showForm && (
         <div className="empty-state card">
           <h3>No versions yet</h3>
           <p>Create a version to start adding packages</p>
@@ -139,8 +147,11 @@ export default function VersionList({ project, onNewVersion, onDeleteVersion, on
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        {project?.versions.map(v => (
-          <div key={v.id} className="card flex-center" style={{ justifyContent: 'space-between', cursor: 'pointer' }}
+        {project?.versions?.map(v => (
+          <div
+            key={v.id}
+            className="card flex-center"
+            style={{ justifyContent: 'space-between', cursor: 'pointer' }}
             onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
             onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
           >

@@ -15,7 +15,7 @@ import SponsorshipForm from './screens/SponsorshipForm'
 import VersionSummary from './screens/VersionSummary'
 
 import {
-  fetchProjects, createProject as dbCreateProject, deleteProject as dbDeleteProject,
+  fetchProjects, createProject as dbCreateProject, deleteProject as dbDeleteProject,updateProject as dbUpdateProject,
   fetchVersions, createVersion as dbCreateVersion, deleteVersion as dbDeleteVersion,
   fetchPackages, createPackage as dbCreatePackage, updatePackage as dbUpdatePackage,
   deletePackage as dbDeletePackage, updatePackagePositions,
@@ -34,7 +34,6 @@ export default function App() {
 
   const activeProject = projects.find(p => p.id === activeProjectId) || null
   const activeVersion = versions.find(v => v.id === activeVersionId) || null
-
   const versionForSummary = activeVersion
     ? { ...activeVersion, packages: packages.filter(p => p.versionId === activeVersionId) }
     : null
@@ -86,6 +85,16 @@ export default function App() {
       setScreen('versionList')
     } catch (e) {
       console.error('Failed to create project:', e)
+    }
+  }
+
+async function handleEditProject(data) {
+    try {
+      const updated = await dbUpdateProject(activeProjectId, data)
+      setProjects(prev => prev.map(p => p.id === activeProjectId ? updated : p))
+      setScreen('versionList')
+    } catch (e) {
+      console.error('Failed to update project:', e)
     }
   }
 
@@ -285,6 +294,10 @@ export default function App() {
           onSelect={openProject}
           onNew={() => setScreen('projectForm')}
           onDelete={handleDeleteProject}
+          onEdit={(project) => {
+            setActiveProjectId(project.id)
+            setScreen('projectEditForm')
+          }}
         />
       )}
 
@@ -295,12 +308,21 @@ export default function App() {
         />
       )}
 
+      {screen === 'projectEditForm' && (
+        <ProjectForm
+          existingProject={activeProject}
+          onSave={handleEditProject}
+          onCancel={() => setScreen('versionList')}
+        />
+      )}
+
       {screen === 'versionList' && (
         <VersionList
           project={projectForVersionList}
           onNewVersion={handleCreateVersion}
           onDeleteVersion={handleDeleteVersion}
           onOpenVersion={openVersion}
+          onEditProject={() => setScreen('projectEditForm')}
           onBack={() => {
             setScreen('projectList')
             setActiveProjectId(null)

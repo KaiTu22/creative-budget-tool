@@ -23,9 +23,10 @@ const EMPTY = {
   campaignEnd: '', salesforceLink: '',
 }
 
-export default function ProjectForm({ onSave, onCancel }) {
-  const [form, setForm] = useState(EMPTY)
+export default function ProjectForm({ existingProject, onSave, onCancel }) {
+  const [form, setForm]     = useState(existingProject ? { ...EMPTY, ...existingProject } : EMPTY)
   const [errors, setErrors] = useState({})
+  const isEditing           = !!existingProject
 
   function set(field, value) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -35,7 +36,7 @@ export default function ProjectForm({ onSave, onCancel }) {
   function validate() {
     const required = ['brandName', 'projectName', 'agencyName', 'salesLead', 'pitchLead', 'planDueDate', 'targetAudience', 'objective']
     const e = {}
-    required.forEach(f => { if (!form[f].trim()) e[f] = 'Required' })
+    required.forEach(f => { if (!form[f]?.trim()) e[f] = 'Required' })
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -49,8 +50,13 @@ export default function ProjectForm({ onSave, onCancel }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>New Project</h1>
-        <p>Project details will appear on all budget exports</p>
+        <button className="btn btn-ghost btn-sm" onClick={onCancel} style={{ marginBottom: '0.75rem', padding: '0.2rem 0.5rem' }}>
+          ← Back
+        </button>
+        <h1>{isEditing ? 'Edit Project' : 'New Project'}</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.25rem' }}>
+          Project details will appear on all budget exports
+        </p>
       </div>
 
       <div className="card">
@@ -58,10 +64,10 @@ export default function ProjectForm({ onSave, onCancel }) {
           Brand &amp; Agency
         </h3>
         <div className="grid-2" style={{ gap: '1rem' }}>
-          <Field label="Brand Name" field="brandName" required placeholder="e.g. Nike" {...fieldProps} />
-          <Field label="Sub-Brand" field="subBrandName" placeholder="e.g. Nike Running (optional)" {...fieldProps} />
-          <Field label="Project Name" field="projectName" required placeholder="e.g. Q3 Influencer Campaign" {...fieldProps} />
-          <Field label="Agency Name" field="agencyName" required placeholder="e.g. WPP" {...fieldProps} />
+          <Field label="Brand Name"   field="brandName"    required placeholder="e.g. Nike"                        {...fieldProps} />
+          <Field label="Sub-Brand"    field="subBrandName"          placeholder="e.g. Nike Running (optional)"     {...fieldProps} />
+          <Field label="Project Name" field="projectName"  required placeholder="e.g. Q3 Influencer Campaign"      {...fieldProps} />
+          <Field label="Agency Name"  field="agencyName"   required placeholder="e.g. WPP"                         {...fieldProps} />
         </div>
       </div>
 
@@ -70,8 +76,8 @@ export default function ProjectForm({ onSave, onCancel }) {
           Team
         </h3>
         <div className="grid-2" style={{ gap: '1rem' }}>
-          <Field label="Sales Lead" field="salesLead" required placeholder="Full name" {...fieldProps} />
-          <Field label="Marketing / Pitch Lead" field="pitchLead" required placeholder="Full name" {...fieldProps} />
+          <Field label="Sales Lead"               field="salesLead" required placeholder="Full name" {...fieldProps} />
+          <Field label="Marketing / Pitch Lead"   field="pitchLead" required placeholder="Full name" {...fieldProps} />
         </div>
       </div>
 
@@ -117,15 +123,17 @@ export default function ProjectForm({ onSave, onCancel }) {
           Optional Details
         </h3>
         <div className="grid-2" style={{ gap: '1rem' }}>
-          <Field label="Campaign Start Date" field="campaignStart" type="date" {...fieldProps} />
-          <Field label="Campaign End Date" field="campaignEnd" type="date" {...fieldProps} />
-          <Field label="Salesforce Link" field="salesforceLink" type="url" placeholder="https://" {...fieldProps} />
+          <Field label="Campaign Start Date" field="campaignStart" type="date"  {...fieldProps} />
+          <Field label="Campaign End Date"   field="campaignEnd"   type="date"  {...fieldProps} />
+          <Field label="Salesforce Link"     field="salesforceLink" type="url" placeholder="https://" {...fieldProps} />
         </div>
       </div>
 
       <div className="sticky-bottom">
         <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-        <button className="btn btn-accent" onClick={handleSubmit}>Create Project →</button>
+        <button className="btn btn-accent" onClick={handleSubmit}>
+          {isEditing ? 'Save Changes →' : 'Create Project →'}
+        </button>
       </div>
     </div>
   )

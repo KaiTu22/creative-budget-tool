@@ -31,6 +31,17 @@ export async function deleteProject(id) {
   if (error) throw error
 }
 
+export async function updateProject(id, data) {
+  const { data: updated, error } = await supabase
+    .from('projects')
+    .update(projectToDb(data))
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return dbToProject(updated)
+}
+
 // ─────────────────────────────────────────────
 // VERSIONS
 // ─────────────────────────────────────────────

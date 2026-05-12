@@ -1,8 +1,4 @@
-export default function ProjectList({ projects, onSelect, onNew, onDelete }) {
-
-  function formatDate(ts) {
-    return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  }
+export default function ProjectList({ projects, onSelect, onNew, onDelete, onEdit }) {
 
   return (
     <div className="page">
@@ -56,7 +52,7 @@ export default function ProjectList({ projects, onSelect, onNew, onDelete }) {
                     📅 Due {p.planDueDate}
                   </span>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    {p.versions.length} version{p.versions.length !== 1 ? 's' : ''}
+                    {p.packageCount ?? p.versions?.length ?? 0} version{(p.packageCount ?? p.versions?.length ?? 0) !== 1 ? 's' : ''}
                   </span>
                 </div>
               </div>
@@ -71,6 +67,12 @@ export default function ProjectList({ projects, onSelect, onNew, onDelete }) {
                   }}
                 >
                   Delete
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => onEdit(p)}
+                >
+                  Edit
                 </button>
                 <button className="btn btn-secondary btn-sm" onClick={() => onSelect(p)}>
                   Open →
