@@ -50,21 +50,43 @@ function ProjectDetailsCard({ project, onEditProject }) {
 
       {expanded && (
         <div style={{ padding: '1.25rem', borderTop: '1px solid #c7d2fe' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          {/* Row 1 — 4 columns */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
             {[
-              ['Agency',          project?.agencyName],
-              ['Campaign Start',  project?.campaignStart || '—'],
-              ['Campaign End',    project?.campaignEnd   || '—'],
-              ['Salesforce Link', project?.salesforceLink || '—'],
+              ['Agency',          project?.agencyName      || '—'],
+              ['Pitch Lead',      project?.pitchLead       || '—'],
+              ['Campaign Start',  project?.campaignStart   || '—'],
+              ['Campaign End',    project?.campaignEnd     || '—'],
             ].map(([label, value]) => (
               <div key={label}>
                 <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>{label}</div>
                 <div style={{ fontSize: '0.84rem', color: 'var(--text)', fontWeight: 500 }}>{value}</div>
               </div>
             ))}
-            <div style={{ gridColumn: '1 / -1' }}>
+          </div>
+
+          {/* Row 2 — Salesforce link full width */}
+          {project?.salesforceLink && project.salesforceLink !== '—' && (
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>Salesforce Link</div>
+              <button
+                onClick={() => window.open(project.salesforceLink, '_blank')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: '0.82rem', padding: 0, textDecoration: 'underline', textAlign: 'left' }}
+              >
+                Open in Salesforce →
+              </button>
+            </div>
+          )}
+
+          {/* Row 3 — Audience + Objective side by side */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+            <div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>Target Audience</div>
+              <div style={{ fontSize: '0.84rem', color: 'var(--text)' }}>{project?.targetAudience || '—'}</div>
+            </div>
+            <div>
               <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>Campaign Objective</div>
-              <div style={{ fontSize: '0.84rem', color: 'var(--text)' }}>{project?.objective}</div>
+              <div style={{ fontSize: '0.84rem', color: 'var(--text)' }}>{project?.objective || '—'}</div>
             </div>
           </div>
         </div>

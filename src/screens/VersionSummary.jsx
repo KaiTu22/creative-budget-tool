@@ -43,35 +43,40 @@ function ProjectDetailsCard({ project }) {
 
       {expanded && (
         <div style={{ padding: '1.25rem', borderTop: '1px solid var(--border)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
             {[
-              ['Agency', project?.agencyName],
-              ['Sales Lead', project?.salesLead],
-              ['Pitch Lead', project?.pitchLead],
-              ['Plan Due Date', project?.planDueDate],
-              ['Template', project?.template === 'paramount' ? 'Paramount' : 'Agency'],
+              ['Agency',         project?.agencyName    || '—'],
+              ['Pitch Lead',     project?.pitchLead     || '—'],
               ['Campaign Start', project?.campaignStart || '—'],
-              ['Campaign End', project?.campaignEnd || '—'],
-              ['Salesforce Link', project?.salesforceLink || '—'],
+              ['Campaign End',   project?.campaignEnd   || '—'],
             ].map(([label, value]) => (
               <div key={label}>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>
-                  {label}
-                </div>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>{label}</div>
                 <div style={{ fontSize: '0.84rem', color: 'var(--text)', fontWeight: 500 }}>{value}</div>
               </div>
             ))}
-            <div style={{ gridColumn: '1 / -1' }}>
-              <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>
-                Target Audience
-              </div>
-              <div style={{ fontSize: '0.84rem', color: 'var(--text)' }}>{project?.targetAudience}</div>
+          </div>
+
+          {project?.salesforceLink && (
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>Salesforce Link</div>
+              <button
+                onClick={() => window.open(project.salesforceLink, '_blank')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: '0.82rem', padding: 0, textDecoration: 'underline' }}
+              >
+                Open in Salesforce →
+              </button>
             </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>
-                Campaign Objective
-              </div>
-              <div style={{ fontSize: '0.84rem', color: 'var(--text)' }}>{project?.objective}</div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+            <div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>Target Audience</div>
+              <div style={{ fontSize: '0.84rem', color: 'var(--text)' }}>{project?.targetAudience || '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>Campaign Objective</div>
+              <div style={{ fontSize: '0.84rem', color: 'var(--text)' }}>{project?.objective || '—'}</div>
             </div>
           </div>
         </div>
@@ -164,7 +169,6 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
       borderRadius: '10px',
       overflow: 'hidden',
     }}>
-      {/* Header */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -172,7 +176,6 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
         padding: '1rem 1.25rem',
         background: expanded ? 'var(--navy-light)' : 'var(--surface)',
       }}>
-        {/* Reorder buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginRight: '0.75rem' }}>
           <button
             onClick={onMoveUp}
@@ -186,7 +189,6 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
           >▼</button>
         </div>
 
-        {/* Title */}
         <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setExpanded(v => !v)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
@@ -199,7 +201,6 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
           </div>
         </div>
 
-        {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ textAlign: 'right', cursor: 'pointer' }} onClick={() => setExpanded(v => !v)}>
             <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>
@@ -221,18 +222,15 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
         </div>
       </div>
 
-      {/* Expanded detail */}
       {expanded && (
         <div style={{ padding: '1.25rem', borderTop: '1px solid var(--border)' }}>
 
-          {/* Working/Non-Working bar — always first */}
           <WorkingBar
             working={pkg.workingAmount ?? 0}
             nonWorking={pkg.nonWorkingAmount ?? 0}
             total={pkg.totalInvestment ?? 0}
           />
 
-          {/* Stats — type-specific */}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
             <StatPill label="Total Investment" value={formatCurrency(pkg.totalInvestment)} accent />
 
@@ -274,7 +272,6 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
             </>}
           </div>
 
-          {/* Platforms */}
           {pkg.platforms?.length > 0 && (
             <div style={{ marginBottom: '1.25rem' }}>
               <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.5rem' }}>Platforms</div>
@@ -288,7 +285,6 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
             </div>
           )}
 
-          {/* Cost lines */}
           {pkg.costLines?.length > 0 && (
             <div style={{ marginBottom: '1.25rem' }}>
               <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.5rem' }}>P&T Cost Breakdown</div>
@@ -313,7 +309,6 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
             </div>
           )}
 
-          {/* Plan link */}
           {pkg.planLink && (
             <div style={{ marginBottom: '1.25rem' }}>
               <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.4rem' }}>Pre-Built Plan</div>
@@ -326,7 +321,6 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
             </div>
           )}
 
-          {/* Notes */}
           {(pkg.creativeAssets || pkg.notes) && (
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
               {pkg.creativeAssets && (
@@ -343,7 +337,6 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
               )}
             </div>
           )}
-
         </div>
       )}
     </div>
@@ -400,48 +393,58 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
       <ProjectDetailsCard project={project} />
 
       {packages.length > 0 && (
-        <div className="card" style={{ background: 'var(--primary)', border: 'none', marginBottom: '1rem' }}>
-          <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>
-              Total Version Investment
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>
+              Package Summary
             </div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', letterSpacing: '-0.03em', lineHeight: 1 }}>
+            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.03em', lineHeight: 1 }}>
               {formatCurrency(totals.totalInvestment)}
             </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+              {packages.length} package{packages.length !== 1 ? 's' : ''} in this version
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border)', marginBottom: '1rem' }} />
+
+          <div style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
             {[
-              { label: 'Media Investment',    value: formatCurrency(totals.totalMediaInvest),    sub: formatPct(mediaPctTotal) + ' of total' },
-              { label: 'P&T Investment',      value: formatCurrency(totals.totalPTInvest),       sub: formatPct(1 - mediaPctTotal) + ' of total' },
-              { label: 'Internal P&T Budget', value: formatCurrency(totals.totalInternalBudget), sub: 'Available to spend' },
-              { label: 'Packages',            value: packages.length,                            sub: 'in this version' },
+              { label: 'Media Investment',    value: formatCurrency(totals.totalMediaInvest),    sub: formatPct(mediaPctTotal) + ' of total',    accent: true  },
+              { label: 'P&T Investment',      value: formatCurrency(totals.totalPTInvest),       sub: formatPct(1 - mediaPctTotal) + ' of total', accent: false },
+              { label: 'Internal P&T Budget', value: formatCurrency(totals.totalInternalBudget), sub: 'Available to spend',                       accent: false },
             ].map(m => (
-              <div key={m.label} style={{ flex: 1, minWidth: '130px', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '0.75rem 1rem' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.5)', marginBottom: '0.2rem' }}>{m.label}</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>{m.value}</div>
-                <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.15rem' }}>{m.sub}</div>
+              <div key={m.label} style={{
+                background: 'var(--bg)', border: '1px solid var(--border)',
+                borderRadius: '8px', padding: '0.75rem 1rem', flex: 1, minWidth: '130px',
+              }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-subtle)', marginBottom: '0.25rem' }}>
+                  {m.label}
+                </div>
+                <div style={{ fontSize: '1rem', fontWeight: 800, color: m.accent ? 'var(--accent)' : 'var(--primary)', letterSpacing: '-0.02em' }}>
+                  {m.value}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{m.sub}</div>
               </div>
             ))}
           </div>
+
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Working vs. Non-Working</span>
-              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)' }}>
-                {formatCurrency(totals.workingAmount)} working · {formatCurrency(totals.nonWorkingAmount)} non-working
-              </span>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-subtle)', marginBottom: '0.35rem' }}>
+              Working vs. Non-Working
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: '6px', height: '12px', overflow: 'hidden', display: 'flex' }}>
-              <div style={{ width: `${workingPct * 100}%`, background: '#03d1e5', transition: 'width 0.4s ease' }} />
-              <div style={{ width: `${nonWorkingPct * 100}%`, background: '#ffd400', transition: 'width 0.4s ease' }} />
+            <div style={{ background: 'var(--border)', borderRadius: '4px', height: '6px', overflow: 'hidden', display: 'flex' }}>
+              <div style={{ width: `${workingPct * 100}%`, background: 'var(--accent)', transition: 'width 0.4s ease', borderRadius: nonWorkingPct > 0 ? '4px 0 0 4px' : '4px' }} />
+              <div style={{ width: `${nonWorkingPct * 100}%`, background: '#cbd5e1', transition: 'width 0.4s ease', borderRadius: workingPct > 0 ? '0 4px 4px 0' : '4px' }} />
             </div>
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.4rem' }}>
-              <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#03d1e5', display: 'inline-block' }} />
-                Working {formatPct(workingPct)}
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.35rem' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--accent)', display: 'inline-block' }} />
+                Working {formatPct(workingPct)} · {formatCurrency(totals.workingAmount)}
               </span>
-              <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#ffd400', display: 'inline-block' }} />
-                Non-Working {formatPct(nonWorkingPct)}
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#cbd5e1', display: 'inline-block' }} />
+                Non-Working {formatPct(nonWorkingPct)} · {formatCurrency(totals.nonWorkingAmount)}
               </span>
             </div>
           </div>
@@ -455,7 +458,18 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
           <button className="btn btn-accent" onClick={onAddPackage}>+ Add Package</button>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+            <div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-subtle)', marginBottom: '0.15rem' }}>
+                Packages
+              </div>
+              <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)' }}>
+                {packages.length} package{packages.length !== 1 ? 's' : ''} in this version
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {packages.map((pkg, index) => (
             <PackageCard
               key={pkg.id}
@@ -468,6 +482,7 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
               onMoveDown={() => onReorderPackage(index, 'down')}
             />
           ))}
+          </div>
         </div>
       )}
 
