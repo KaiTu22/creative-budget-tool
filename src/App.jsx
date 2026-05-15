@@ -15,8 +15,9 @@ import SponsorshipForm from './screens/SponsorshipForm'
 import VersionSummary from './screens/VersionSummary'
 
 import {
-  fetchProjects, createProject as dbCreateProject, deleteProject as dbDeleteProject,updateProject as dbUpdateProject,
-  fetchVersions, createVersion as dbCreateVersion, deleteVersion as dbDeleteVersion,
+  fetchProjects, createProject as dbCreateProject, deleteProject as dbDeleteProject, updateProject as dbUpdateProject,
+  duplicateProject as dbDuplicateProject, duplicateVersion as dbDuplicateVersion, duplicatePackage as dbDuplicatePackage,
+  fetchVersions, createVersion as dbCreateVersion, deleteVersion as dbDeleteVersion, updateVersion as dbUpdateVersion,
   fetchPackages, createPackage as dbCreatePackage, updatePackage as dbUpdatePackage,
   deletePackage as dbDeletePackage, updatePackagePositions,
 } from './data/db'
@@ -133,6 +134,15 @@ async function handleEditProject(data) {
     }
   }
 
+async function handleUpdateVersion(versionId, data) {
+    try {
+      const updated = await dbUpdateVersion(versionId, data)
+      setVersions(prev => prev.map(v => v.id === versionId ? { ...updated, packageCount: v.packageCount } : v))
+    } catch (e) {
+      console.error('Failed to update version:', e)
+    }
+  }
+
   // ── Package actions ──
   async function handleSavePackage(packageData) {
     try {
@@ -174,6 +184,40 @@ async function handleEditProject(data) {
       console.error('Failed to delete package:', e)
     }
   }
+
+async function handleDuplicateProject(project) {
+    try {
+      const newProject = await dbDuplicateProject(project.id)
+      setProjects(prev => [newProject, ...prev])
+    } catch (e) {
+      console.error('Failed to duplicate project:', e)
+    }
+  }
+
+  async function handleDuplicateVersion(versionId) {
+    try {
+      const newVersion = await dbDuplicateVersion(versionId, activeProjectId)
+      setVersions(prev => [newVersion, ...prev])
+    } catch (e) {
+      console.error('Failed to duplicate version:', e)
+    }
+  }
+
+  async function handleDuplicatePackage(packageId) {
+    try {
+      const newPkg = await dbDuplicatePackage(packageId, activeVersionId)
+      setPackages(prev => [...prev, { ...newPkg, versionId: activeVersionId }])
+      setVersions(prev => prev.map(v =>
+        v.id === activeVersionId
+          ? { ...v, packageCount: (v.packageCount ?? 0) + 1 }
+          : v
+      ))
+    } catch (e) {
+      console.error('Failed to duplicate package:', e)
+    }
+  }
+
+
 
   async function handleReorderPackage(index, direction) {
     const currentPackages = packages.filter(p => p.versionId === activeVersionId)
@@ -236,7 +280,6 @@ async function handleEditProject(data) {
           </div>
           <div className="app-logo-text-group">
             <div className="app-logo-headline">Creative Budget Tool</div>
-            <div className="app-logo-sub">Paramount Skydance</div>
           </div>
         </div>
         <nav className="breadcrumb">
@@ -294,6 +337,7 @@ async function handleEditProject(data) {
           onSelect={openProject}
           onNew={() => setScreen('projectForm')}
           onDelete={handleDeleteProject}
+          onDuplicate={handleDuplicateProject}
           onEdit={(project) => {
             setActiveProjectId(project.id)
             setScreen('projectEditForm')
@@ -323,6 +367,7 @@ async function handleEditProject(data) {
           onDeleteVersion={handleDeleteVersion}
           onOpenVersion={openVersion}
           onEditProject={() => setScreen('projectEditForm')}
+          onDuplicateVersion={handleDuplicateVersion}
           onBack={() => {
             setScreen('projectList')
             setActiveProjectId(null)
@@ -428,7 +473,9 @@ async function handleEditProject(data) {
           }}
           onEditPackage={startEdit}
           onDeletePackage={handleDeletePackage}
+          onDuplicatePackage={handleDuplicatePackage}
           onReorderPackage={handleReorderPackage}
+          onUpdateVersion={handleUpdateVersion}
           onBack={() => setScreen('versionList')}
         />
       )}

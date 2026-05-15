@@ -77,6 +77,17 @@ export async function deleteVersion(id) {
   if (error) throw error
 }
 
+export async function updateVersion(id, data) {
+  const { data: updated, error } = await supabase
+    .from('versions')
+    .update({ name: data.name, notes: data.notes })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return dbToVersion(updated)
+}
+
 // ─────────────────────────────────────────────
 // PACKAGES
 // ─────────────────────────────────────────────
@@ -180,6 +191,129 @@ function dbToVersion(v) {
     createdAt: v.created_at,
     packages:  [],
   }
+}
+
+export async function duplicateProject(projectId) {
+  const { data: original, error: e1 } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .single()
+  if (e1) throw e1
+
+  const { data: newProject, error: e2 } = await supabase
+    .from('projects')
+    .insert({
+      brand_name:      original.brand_name,
+      sub_brand_name:  original.sub_brand_name,
+      project_name:    original.project_name + ' (Copy)',
+      agency_name:     original.agency_name,
+      sales_lead:      original.sales_lead,
+      pitch_lead:      original.pitch_lead,
+      plan_due_date:   original.plan_due_date,
+      target_audience: original.target_audience,
+      objective:       original.objective,
+      template:        original.template,
+      campaign_start:  original.campaign_start,
+      campaign_end:    original.campaign_end,
+      salesforce_link: original.salesforce_link,
+    })
+    .select()
+    .single()
+  if (e2) throw e2
+
+  const { data: versions, error: e3 } = await supabase
+    .from('versions')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
+  if (e3) throw e3
+
+  for (const version of versions) {
+    const { data: newVersion, error: e4 } = await supabase
+      .from('versions')
+      .insert({ project_id: newProject.id, name: version.name, notes: version.notes })
+      .select()
+      .single()
+    if (e4) throw e4
+
+    const { data: packages, error: e5 } = await supabase
+      .from('packages')
+      .select('*')
+      .eq('version_id', version.id)
+      .order('position', { ascending: true })
+    if (e5) throw e5
+
+    for (const pkg of packages) {
+      await supabase
+        .from('packages')
+        .insert({ version_id: newVersion.id, data: pkg.data, position: pkg.position })
+    }
+  }
+
+  return dbToProject(newProject)
+}
+
+export async function duplicateVersion(versionId, projectId) {
+  const { data: original, error: e1 } = await supabase
+    .from('versions')
+    .select('*')
+    .eq('id', versionId)
+    .single()
+  if (e1) throw e1
+
+  const { data: newVersion, error: e2 } = await supabase
+    .from('versions')
+    .insert({ project_id: projectId, name: original.name + ' (Copy)', notes: original.notes })
+    .select()
+    .single()
+  if (e2) throw e2
+
+  const { data: packages, error: e3 } = await supabase
+    .from('packages')
+    .select('*')
+    .eq('version_id', versionId)
+    .order('position', { ascending: true })
+  if (e3) throw e3
+
+  for (const pkg of packages) {
+    await supabase
+      .from('packages')
+      .insert({ version_id: newVersion.id, data: pkg.data, position: pkg.position })
+  }
+
+  return { ...dbToVersion(newVersion), packageCount: packages.length }
+}
+
+export async function duplicatePackage(packageId, versionId) {
+  const { data: original, error: e1 } = await supabase
+    .from('packages')
+    .select('*')
+    .eq('id', packageId)
+    .single()
+  if (e1) throw e1
+
+  const { data: existing } = await supabase
+    .from('packages')
+    .select('position')
+    .eq('version_id', versionId)
+    .order('position', { ascending: false })
+    .limit(1)
+
+  const newPosition = existing?.[0]?.position != null ? existing[0].position + 1 : 0
+
+  const { data: newPkg, error: e2 } = await supabase
+    .from('packages')
+    .insert({
+      version_id: versionId,
+      data: { ...original.data, title: (original.data.title || '') + ' (Copy)' },
+      position: newPosition,
+    })
+    .select()
+    .single()
+  if (e2) throw e2
+
+  return dbToPackage(newPkg)
 }
 
 function dbToPackage(p) {

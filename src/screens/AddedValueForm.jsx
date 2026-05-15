@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { PLATFORMS } from '../data/constants'
 import { formatCurrency } from '../data/calculations'
 import BudgetWorkbench from '../components/BudgetWorkbench'
+import CurrencyInput from '../components/CurrencyInput'
+import StepCard from '../components/StepCard'
 
 const AV_TYPES = [
   { value: 'pt',         label: 'Production & Talent' },
@@ -9,19 +11,6 @@ const AV_TYPES = [
   { value: 'oo',         label: 'O&O'                 },
   { value: 'other',      label: 'Other'               },
 ]
-
-function SectionHeader({ title }) {
-  return (
-    <div style={{
-      fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase',
-      letterSpacing: '0.06em', color: 'var(--primary)',
-      paddingBottom: '0.5rem', borderBottom: '2px solid var(--border)',
-      marginBottom: '1rem',
-    }}>
-      {title}
-    </div>
-  )
-}
 
 export default function AddedValueForm({ existingPackage, onSave, onCancel }) {
   const ep = existingPackage
@@ -36,25 +25,27 @@ export default function AddedValueForm({ existingPackage, onSave, onCancel }) {
   const [costLines, setCostLines]       = useState(ep?.costLines || [])
   const [platforms, setPlatforms]       = useState(ep?.platforms || [])
   const [notes, setNotes]               = useState(ep?.notes || '')
-  const [titleError, setTitleError]     = useState(false)
+  const [errors, setErrors]             = useState({})
 
-  const isPT = avType === 'pt'
-
-  // For P&T type
-  const ptCostNum  = parseFloat(ptCost) || 0
-  const ptValueNum = parseFloat(ptValue) || 0
-
-  // For Paid Dist type
+  const isPT           = avType === 'pt'
+  const showPlatforms  = avType === 'paidSocial' || avType === 'other'
+  const ptCostNum      = parseFloat(ptCost) || 0
+  const ptValueNum     = parseFloat(ptValue) || 0
   const impressionsNum = parseFloat(impressions) || 0
   const internalCpmNum = parseFloat(internalCpm) || 0
   const calcInternalCost = impressionsNum > 0 && internalCpmNum > 0
-    ? (impressionsNum / 1000) * internalCpmNum
-    : 0
-  const extValueNum = parseFloat(externalValue) || 0
+    ? (impressionsNum / 1000) * internalCpmNum : 0
+  const extValueNum    = parseFloat(externalValue) || 0
+  const internalCost   = isPT ? ptCostNum : calcInternalCost
+  const clientValue    = isPT ? ptValueNum : extValueNum
+  const multiplier     = internalCost > 0 && clientValue > 0
+    ? (clientValue / internalCost).toFixed(1) : null
+  const isDirty        = !!(title || ptCost || ptValue || impressions)
 
-  const internalCost = isPT ? ptCostNum : calcInternalCost
-  const clientValue  = isPT ? ptValueNum : extValueNum
-  const multiplier   = internalCost > 0 && clientValue > 0 ? (clientValue / internalCost).toFixed(1) : null
+  function handleCancel() {
+    if (isDirty && !window.confirm('You have unsaved changes. Are you sure you want to leave?')) return
+    onCancel()
+  }
 
   function addPlatform() {
     setPlatforms(prev => [...prev, { id: crypto.randomUUID(), platform: 'instagram', handle: 'paramount' }])
@@ -66,11 +57,25 @@ export default function AddedValueForm({ existingPackage, onSave, onCancel }) {
     setPlatforms(prev => prev.filter(p => p.id !== id))
   }
 
+  function stepStatus(stepNum) {
+    switch (stepNum) {
+      case 1: return title.trim() ? 'completed' : 'active'
+      case 2: return (internalCost > 0 || clientValue > 0) ? 'completed' : 'active'
+      case 3: return isPT && ptCostNum > 0 ? (costLines.length > 0 ? 'completed' : 'active') : 'locked'
+      case 4: return !showPlatforms ? 'locked' : platforms.length > 0 ? 'completed' : 'active'
+      case 5: return 'active'
+      default: return 'locked'
+    }
+  }
+
   function handleSave() {
-    if (!title.trim()) { setTitleError(true); return }
-    if (!internalCost && !clientValue) return
+    const e = {}
+    if (!title.trim()) e.title = 'Required'
+    if (!internalCost && !clientValue) e.value = 'Enter a cost or value'
+    setErrors(e)
+    if (Object.keys(e).length > 0) return
     onSave({
-      id:               crypto.randomUUID(),
+      id:               ep?.id || crypto.randomUUID(),
       type:             'addedValue',
       title:            title.trim(),
       avType,
@@ -97,32 +102,31 @@ export default function AddedValueForm({ existingPackage, onSave, onCancel }) {
   }
 
   return (
-    <div className="page" style={{ maxWidth: '920px' }}>
+    <div className="page" style={{ maxWidth: '860px' }}>
       <div className="page-header">
-        <button className="btn btn-ghost btn-sm" onClick={onCancel} style={{ marginBottom: '0.75rem', padding: '0.2rem 0.5rem' }}>
+        <button className="btn btn-ghost btn-sm" onClick={handleCancel} style={{ marginBottom: '0.75rem', padding: '0.2rem 0.5rem' }}>
           ← Back
         </button>
-        <h1>{existingPackage ? 'Edit' : 'New'} Added Value Package</h1>
+        <h1>{ep ? 'Edit' : 'New'} Added Value Package</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.25rem' }}>
           Internal cost plus external value delivered to the client.
         </p>
       </div>
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <SectionHeader title="Package Details" />
+      <StepCard number={1} title="Package Identity" status={stepStatus(1)}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
             <label>Package Title <span style={{ color: 'var(--danger)' }}>*</span></label>
             <input
               type="text"
               value={title}
-              onChange={e => { setTitle(e.target.value); setTitleError(false) }}
+              onChange={e => { setTitle(e.target.value); setErrors(prev => ({ ...prev, title: null })) }}
               placeholder="e.g. Added Value – Social Amplification"
-              style={titleError ? { borderColor: 'var(--danger)' } : {}}
+              style={errors.title ? { borderColor: 'var(--danger)' } : {}}
+              autoFocus
             />
-            {titleError && <span style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>Title is required</span>}
+            {errors.title && <span style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>{errors.title}</span>}
           </div>
-
           <div className="form-group">
             <label>Added Value Type</label>
             <select value={avType} onChange={e => setAvType(e.target.value)}>
@@ -130,185 +134,108 @@ export default function AddedValueForm({ existingPackage, onSave, onCancel }) {
             </select>
           </div>
         </div>
-      </div>
+      </StepCard>
 
-      {/* P&T mode */}
-      {isPT && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <SectionHeader title="P&T Cost vs. Value" />
+      <StepCard number={2} title="Cost vs. Value" status={stepStatus(2)}>
+        {errors.value && <div style={{ fontSize: '0.78rem', color: 'var(--danger)', marginBottom: '0.75rem' }}>{errors.value}</div>}
+
+        {isPT ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div className="form-group">
               <label>P&T Cost <span style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', fontWeight: 400 }}>what we spend</span></label>
-              <input
-                type="number"
-                min="0"
-                value={ptCost}
-                onChange={e => setPtCost(e.target.value)}
-                placeholder="e.g. 25000"
-              />
+              <CurrencyInput value={ptCost} onChange={val => setPtCost(val)} placeholder="25,000" />
             </div>
             <div className="form-group">
               <label>P&T Value <span style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', fontWeight: 400 }}>what client receives</span></label>
-              <input
-                type="number"
-                min="0"
-                value={ptValue}
-                onChange={e => setPtValue(e.target.value)}
-                placeholder="e.g. 100000"
-              />
+              <CurrencyInput value={ptValue} onChange={val => setPtValue(val)} placeholder="100,000" />
             </div>
           </div>
-
-          {(ptCostNum > 0 || ptValueNum > 0) && (
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <div style={{ flex: 1, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.875rem' }}>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#92400e', marginBottom: '0.2rem' }}>P&T Cost</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#92400e' }}>{formatCurrency(ptCostNum)}</div>
-                <div style={{ fontSize: '0.72rem', color: '#b45309', marginTop: '0.15rem' }}>Non-Working</div>
-              </div>
-              <div style={{ flex: 1, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.875rem' }}>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#15803d', marginBottom: '0.2rem' }}>P&T Value</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#15803d' }}>{formatCurrency(ptValueNum)}</div>
-                <div style={{ fontSize: '0.72rem', color: '#16a34a', marginTop: '0.15rem' }}>Client-facing value</div>
-              </div>
-              {multiplier && (
-                <div style={{ flex: 1, background: 'var(--navy-light)', border: '1px solid #c7d2fe', borderRadius: '8px', padding: '0.875rem' }}>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>Value Multiplier</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>{multiplier}x</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Return on cost</div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Paid Dist / O&O / Other mode */}
-      {!isPT && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <SectionHeader title="Distribution Details" />
+        ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div className="form-group">
               <label>Impressions</label>
-              <input
-                type="number"
-                min="0"
-                value={impressions}
-                onChange={e => setImpressions(e.target.value)}
-                placeholder="e.g. 5000000"
-              />
+              <input type="number" min="0" value={impressions} onChange={e => setImpressions(e.target.value)} placeholder="e.g. 5000000" />
             </div>
             <div className="form-group">
               <label>Internal CPM</label>
-              <input
-                type="number"
-                min="0"
-                value={internalCpm}
-                onChange={e => setInternalCpm(e.target.value)}
-                placeholder="e.g. 10.00"
-              />
+              <input type="number" min="0" value={internalCpm} onChange={e => setInternalCpm(e.target.value)} placeholder="e.g. 10.00" />
             </div>
             <div className="form-group">
-              <label>External Value <span style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', fontWeight: 400 }}>optional — client-facing</span></label>
-              <input
-                type="number"
-                min="0"
-                value={externalValue}
-                onChange={e => setExternalValue(e.target.value)}
-                placeholder="e.g. 100000"
-              />
+              <label>External Value <span style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', fontWeight: 400 }}>optional</span></label>
+              <CurrencyInput value={externalValue} onChange={val => setExternalValue(val)} placeholder="100,000" />
             </div>
           </div>
+        )}
 
-          {calcInternalCost > 0 && (
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.875rem' }}>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#92400e', marginBottom: '0.2rem' }}>Internal Cost</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#92400e' }}>{formatCurrency(calcInternalCost)}</div>
-                <div style={{ fontSize: '0.72rem', color: '#b45309', marginTop: '0.15rem' }}>
-                  {impressionsNum.toLocaleString()} impressions × ${internalCpm} CPM
-                </div>
-              </div>
-              {extValueNum > 0 && (
-                <div style={{ flex: 1, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.875rem' }}>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#15803d', marginBottom: '0.2rem' }}>External Value</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#15803d' }}>{formatCurrency(extValueNum)}</div>
-                  <div style={{ fontSize: '0.72rem', color: '#16a34a', marginTop: '0.15rem' }}>Client-facing value</div>
-                </div>
-              )}
-              {multiplier && (
-                <div style={{ flex: 1, background: 'var(--navy-light)', border: '1px solid #c7d2fe', borderRadius: '8px', padding: '0.875rem' }}>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>Value Multiplier</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>{multiplier}x</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Return on cost</div>
-                </div>
-              )}
+        {(internalCost > 0 || clientValue > 0) && (
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.75rem 1rem' }}>
+              <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#92400e', marginBottom: '0.2rem' }}>Internal Cost</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#92400e' }}>{formatCurrency(internalCost)}</div>
+              <div style={{ fontSize: '0.7rem', color: '#b45309', marginTop: '0.15rem' }}>Non-Working</div>
             </div>
-          )}
-        </div>
-      )}
+            {clientValue > 0 && (
+              <div style={{ flex: 1, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.75rem 1rem' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#15803d', marginBottom: '0.2rem' }}>Client Value</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#15803d' }}>{formatCurrency(clientValue)}</div>
+                <div style={{ fontSize: '0.7rem', color: '#16a34a', marginTop: '0.15rem' }}>Client-facing</div>
+              </div>
+            )}
+            {multiplier && (
+              <div style={{ flex: 1, background: 'var(--navy-light)', border: '1px solid #c7d2fe', borderRadius: '8px', padding: '0.75rem 1rem' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>Multiplier</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>{multiplier}x</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Return on cost</div>
+              </div>
+            )}
+          </div>
+        )}
+      </StepCard>
 
-      {/* Budget Workbench — P&T type only */}
       {isPT && ptCostNum > 0 && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <SectionHeader title="Cost Itemization" />
+        <StepCard number={3} title="Cost Itemization" status={stepStatus(3)}>
           <BudgetWorkbench
             availableBudget={ptCostNum}
             lines={costLines}
             onChange={setCostLines}
           />
-        </div>
+        </StepCard>
       )}
 
-     {(avType === 'paidSocial' || avType === 'other') && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <SectionHeader title="Platforms" />
+      {showPlatforms && (
+        <StepCard number={4} title="Platforms" status={stepStatus(4)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
             {platforms.map(p => (
               <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '1fr 36px', gap: '0.5rem', alignItems: 'center' }}>
-                <select
-                  value={p.platform}
-                  onChange={e => updatePlatform(p.id, 'platform', e.target.value)}
-                  style={{ fontSize: '0.84rem' }}
-                >
+                <select value={p.platform} onChange={e => updatePlatform(p.id, 'platform', e.target.value)} style={{ fontSize: '0.84rem' }}>
                   {PLATFORMS.map(pl => <option key={pl.value} value={pl.value}>{pl.label}</option>)}
                 </select>
-                <button
-                  onClick={() => removePlatform(p.id)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-subtle)', fontSize: '1.1rem', padding: 0 }}
-                >×</button>
+                <button onClick={() => removePlatform(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-subtle)', fontSize: '1.1rem', padding: 0 }}>×</button>
               </div>
             ))}
           </div>
           <button className="btn btn-secondary btn-sm" onClick={addPlatform}>+ Add Platform</button>
-        </div>
+        </StepCard>
       )}
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <SectionHeader title="Notes" />
+      <StepCard number={5} title="Notes" status={stepStatus(5)}>
         <div className="form-group">
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
             placeholder="Any additional context..."
-            style={{ minHeight: '72px' }}
+            style={{ minHeight: '80px' }}
           />
         </div>
-      </div>
+      </StepCard>
 
       <div className="sticky-bottom">
-        <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+        <button className="btn btn-secondary" onClick={handleCancel}>Cancel</button>
         {!internalCost && !clientValue && (
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Enter cost or value details to save
-          </span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Enter cost or value details to save</span>
         )}
-        <button
-          className="btn btn-accent"
-          onClick={handleSave}
-          disabled={!internalCost && !clientValue}
-        >
-          {existingPackage ? 'Save Changes →' : 'Save Package →'}
+        <button className="btn btn-accent" onClick={handleSave} disabled={!internalCost && !clientValue}>
+          {ep ? 'Save Changes →' : 'Save Package →'}
         </button>
       </div>
     </div>

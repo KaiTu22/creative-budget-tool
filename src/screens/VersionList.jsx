@@ -95,7 +95,7 @@ function ProjectDetailsCard({ project, onEditProject }) {
   )
 }
 
-export default function VersionList({ project, onNewVersion, onDeleteVersion, onOpenVersion, onBack, onEditProject }) {
+export default function VersionList({ project, onNewVersion, onDeleteVersion, onOpenVersion, onBack, onEditProject, onDuplicateVersion }) {
   const [showForm, setShowForm]       = useState(false)
   const [versionName, setVersionName] = useState('')
   const [versionNotes, setVersionNotes] = useState('')
@@ -187,6 +187,13 @@ export default function VersionList({ project, onNewVersion, onDeleteVersion, on
               </div>
             </div>
             <div className="flex-center gap-sm" onClick={e => e.stopPropagation()}>
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ color: 'var(--text-subtle)' }}
+                onClick={() => onDuplicateVersion(v.id)}
+              >
+                Duplicate
+              </button>
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ color: 'var(--danger)' }}

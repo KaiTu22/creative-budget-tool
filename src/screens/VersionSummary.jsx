@@ -4,6 +4,25 @@ import { calcVersionTotals, formatCurrency, formatPct } from '../data/calculatio
 import PresentationMode from './PresentationMode'
 import PTCostSummary from './PTCostSummary'
 
+const CAMPAIGN_TYPE_LABELS = {
+  talentCaptured:               'Talent Captured',
+  hybrid:                       'Hybrid',
+  paramountProduced:            'Paramount Produced',
+  ytAndParamountSocial:         'YT and Paramount Social',
+  ytAndParamountTalentSocial:   'YT and Paramount + Talent Social',
+  socialParamountOnly:          'Social Paramount Only',
+  socialParamountAndTalent:     'Social Paramount and Talent',
+  paramountSocialOnly:          'Paramount Social Only',
+  influence:                    'Influence',
+  brandedContent:               'Branded Content',
+  experiential:                 'Experiential',
+  integration:                  'Integration',
+}
+
+function formatCampaignType(value) {
+  return CAMPAIGN_TYPE_LABELS[value] || value
+}
+
 function ProjectDetailsCard({ project }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -158,7 +177,7 @@ function WorkingBar({ working, nonWorking, total }) {
   )
 }
 
-function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown }) {
+function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown, onDuplicate }) {
   const [expanded, setExpanded] = useState(false)
   const typeLabel = PACKAGE_TYPES[pkg.type]?.label || pkg.type
 
@@ -196,7 +215,7 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem', paddingLeft: '1.25rem' }}>
             <span className="badge badge-navy" style={{ marginRight: '0.5rem' }}>{typeLabel}</span>
-            {pkg.campaignType && <span style={{ marginRight: '0.5rem' }}>{pkg.campaignType}</span>}
+            {pkg.campaignType && <span style={{ marginRight: '0.5rem' }}>{formatCampaignType(pkg.campaignType)}</span>}
             {pkg.presentation && <span style={{ color: 'var(--text-subtle)' }}>· {pkg.presentation === 'brokenOut' ? 'Broken Out' : 'Blended'}</span>}
           </div>
         </div>
@@ -210,6 +229,11 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
           </div>
           <div style={{ display: 'flex', gap: '0.35rem' }}>
             <button className="btn btn-secondary btn-sm" onClick={onEdit}>Edit</button>
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ color: 'var(--text-subtle)' }}
+              onClick={onDuplicate}
+            >Duplicate</button>
             <button
               className="btn btn-ghost btn-sm"
               style={{ color: 'var(--danger)' }}
@@ -343,8 +367,17 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
   )
 }
 
-export default function VersionSummary({ project, version, onAddPackage, onBack, onEditPackage, onDeletePackage, onReorderPackage }) {
-  const [viewMode, setViewMode] = useState('working')
+export default function VersionSummary({ project, version, onAddPackage, onBack, onEditPackage, onDeletePackage, onReorderPackage, onUpdateVersion, onDuplicatePackage }) {
+  const [viewMode, setViewMode]         = useState('working')
+  const [editingName, setEditingName]   = useState(false)
+  const [nameInput, setNameInput]       = useState(version?.name || '')
+
+  function handleNameSave() {
+    if (nameInput.trim() && nameInput.trim() !== version?.name) {
+      onUpdateVersion(version.id, { name: nameInput.trim(), notes: version.notes })
+    }
+    setEditingName(false)
+  }
   const packages = version?.packages || []
   const totals   = calcVersionTotals(packages)
 
@@ -368,8 +401,34 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
         </button>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1>{version?.name}</h1>
-            <p>{project?.brandName} · {project?.projectName} · {project?.agencyName}</p>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
+              {project?.brandName} · {project?.projectName} · {project?.agencyName}
+            </p>
+            {editingName ? (
+              <input
+                type="text"
+                value={nameInput}
+                onChange={e => setNameInput(e.target.value)}
+                onBlur={handleNameSave}
+                onKeyDown={e => { if (e.key === 'Enter') handleNameSave(); if (e.key === 'Escape') setEditingName(false) }}
+                autoFocus
+                style={{
+                  fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)',
+                  border: '2px solid var(--accent)', borderRadius: '6px',
+                  padding: '0.25rem 0.5rem', width: '100%', maxWidth: '400px',
+                }}
+              />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h1 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{version?.name}</h1>
+                <button
+                  onClick={() => { setNameInput(version?.name || ''); setEditingName(true) }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-subtle)', fontSize: '0.75rem', padding: '0.15rem 0.4rem', borderRadius: '4px' }}
+                >
+                  Edit
+                </button>
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.25rem' }}>
             {[
@@ -478,6 +537,7 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
               total={packages.length}
               onEdit={() => onEditPackage(pkg)}
               onDelete={() => onDeletePackage(pkg.id)}
+              onDuplicate={() => onDuplicatePackage(pkg.id)}
               onMoveUp={() => onReorderPackage(index, 'up')}
               onMoveDown={() => onReorderPackage(index, 'down')}
             />
@@ -487,6 +547,11 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+        <button className="btn btn-secondary" onClick={onBack}>← Back to Versions</button>
+        <button className="btn btn-accent" onClick={onAddPackage}>+ Add Package</button>
+      </div>
+
+      <div className="sticky-bottom">
         <button className="btn btn-secondary" onClick={onBack}>← Back to Versions</button>
         <button className="btn btn-accent" onClick={onAddPackage}>+ Add Package</button>
       </div>

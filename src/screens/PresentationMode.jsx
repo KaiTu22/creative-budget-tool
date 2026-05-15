@@ -1,6 +1,25 @@
 import { PACKAGE_TYPES } from '../data/constants'
 import { calcVersionTotals, formatCurrency, formatPct } from '../data/calculations'
 
+const CAMPAIGN_TYPE_LABELS = {
+  talentCaptured:               'Talent Captured',
+  hybrid:                       'Hybrid',
+  paramountProduced:            'Paramount Produced',
+  ytAndParamountSocial:         'YT and Paramount Social',
+  ytAndParamountTalentSocial:   'YT and Paramount + Talent Social',
+  socialParamountOnly:          'Social Paramount Only',
+  socialParamountAndTalent:     'Social Paramount and Talent',
+  paramountSocialOnly:          'Paramount Social Only',
+  influence:                    'Influence',
+  brandedContent:               'Branded Content',
+  experiential:                 'Experiential',
+  integration:                  'Integration',
+}
+
+function formatCampaignType(value) {
+  return CAMPAIGN_TYPE_LABELS[value] || value
+}
+
 function Section({ title, children }) {
   return (
     <div style={{ marginBottom: '2rem' }}>
@@ -87,13 +106,19 @@ export default function PresentationMode({ project, version, onBack }) {
         </div>
 
         {/* Working/NW bar */}
-        <div style={{ background: 'var(--border)', borderRadius: '6px', height: '10px', overflow: 'hidden', display: 'flex', marginBottom: '0.4rem' }}>
-          <div style={{ width: `${workingPct * 100}%`, background: 'var(--success)' }} />
-          <div style={{ width: `${nonWorkingPct * 100}%`, background: 'var(--warning)' }} />
+        <div style={{ background: 'var(--border)', borderRadius: '4px', height: '6px', overflow: 'hidden', display: 'flex', marginBottom: '0.4rem' }}>
+          <div style={{ width: `${workingPct * 100}%`, background: 'var(--accent)', borderRadius: nonWorkingPct > 0 ? '4px 0 0 4px' : '4px' }} />
+          <div style={{ width: `${nonWorkingPct * 100}%`, background: '#cbd5e1', borderRadius: workingPct > 0 ? '0 4px 4px 0' : '4px' }} />
         </div>
-        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-          <span>■ Working {formatPct(workingPct)}</span>
-          <span>■ Non-Working {formatPct(nonWorkingPct)}</span>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.35rem' }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--accent)', display: 'inline-block' }} />
+            Working {formatPct(workingPct)} · {formatCurrency(totals.workingAmount)}
+          </span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#cbd5e1', display: 'inline-block' }} />
+            Non-Working {formatPct(nonWorkingPct)} · {formatCurrency(totals.nonWorkingAmount)}
+          </span>
         </div>
       </Section>
 
@@ -109,7 +134,7 @@ export default function PresentationMode({ project, version, onBack }) {
                 {pkg.title}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                {pkg.campaignType && <span style={{ marginRight: '1rem' }}>Campaign Type: {pkg.campaignType}</span>}
+                {pkg.campaignType && <span style={{ marginRight: '1rem' }}>Campaign Type: {formatCampaignType(pkg.campaignType)}</span>}
                 {pkg.presentation && <span>Presentation: {pkg.presentation === 'brokenOut' ? 'Broken Out' : 'Blended'}</span>}
               </div>
 
@@ -137,6 +162,34 @@ export default function PresentationMode({ project, version, onBack }) {
               <DataRow label="Working" value={formatCurrency(pkg.workingAmount)} />
               <DataRow label="Non-Working" value={formatCurrency(pkg.nonWorkingAmount)} />
             </div>
+
+            {/* Per-package working bar */}
+            {pkg.totalInvestment > 0 && (
+              <div style={{ margin: '0.75rem 0 1rem' }}>
+                <div style={{ background: 'var(--border)', borderRadius: '4px', height: '6px', overflow: 'hidden', display: 'flex', marginBottom: '0.35rem' }}>
+                  <div style={{
+                    width: `${Math.round((pkg.workingAmount / pkg.totalInvestment) * 100)}%`,
+                    background: 'var(--accent)',
+                    borderRadius: pkg.nonWorkingAmount > 0 ? '4px 0 0 4px' : '4px',
+                  }} />
+                  <div style={{
+                    width: `${Math.round((pkg.nonWorkingAmount / pkg.totalInvestment) * 100)}%`,
+                    background: '#cbd5e1',
+                    borderRadius: pkg.workingAmount > 0 ? '0 4px 4px 0' : '4px',
+                  }} />
+                </div>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--accent)', display: 'inline-block' }} />
+                    Working {Math.round((pkg.workingAmount / pkg.totalInvestment) * 100)}%
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#cbd5e1', display: 'inline-block' }} />
+                    Non-Working {Math.round((pkg.nonWorkingAmount / pkg.totalInvestment) * 100)}%
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Platforms */}
             {pkg.platforms?.length > 0 && (

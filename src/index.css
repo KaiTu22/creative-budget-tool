@@ -193,7 +193,10 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(0,100,255,0.08);
 }
-
+::placeholder {
+  color: var(--text-subtle);
+  opacity: 0.5;
+}
 select { cursor: pointer; }
 textarea { resize: vertical; min-height: 80px; }
 

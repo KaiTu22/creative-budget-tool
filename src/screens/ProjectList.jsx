@@ -1,11 +1,13 @@
-export default function ProjectList({ projects, onSelect, onNew, onDelete, onEdit }) {
+export default function ProjectList({ projects, onSelect, onNew, onDelete, onEdit, onDuplicate }) {
 
   return (
     <div className="page">
       <div className="page-header flex-center" style={{ justifyContent: 'space-between' }}>
         <div>
           <h1>Projects</h1>
-          <p>Each project maps to an RFP</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '0.2rem' }}>
+            Each project maps to an RFP
+          </p>
         </div>
         <button className="btn btn-accent" onClick={onNew}>+ New Project</button>
       </div>
@@ -18,48 +20,83 @@ export default function ProjectList({ projects, onSelect, onNew, onDelete, onEdi
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {projects.map(p => (
           <div
             key={p.id}
             className="card"
-            style={{ cursor: 'pointer', transition: 'box-shadow 0.15s' }}
+            style={{ cursor: 'pointer', transition: 'all 0.15s', padding: '1rem 1.25rem', borderLeft: '3px solid var(--border)' }}
             onClick={() => onSelect(p)}
-            onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
-            onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+            onMouseEnter={e => {
+              e.currentTarget.style.boxShadow = 'var(--shadow-md)'
+              e.currentTarget.style.borderLeftColor = 'var(--accent)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.boxShadow = 'none'
+              e.currentTarget.style.borderLeftColor = 'var(--border)'
+            }}
           >
-            <div className="flex-center" style={{ justifyContent: 'space-between' }}>
-              <div style={{ flex: 1 }}>
-                <div className="flex-center gap-sm" style={{ marginBottom: '0.35rem' }}>
-                  <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+
+              {/* Left — project info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {/* Brand + sub-brand */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary)' }}>
                     {p.brandName}
                   </span>
                   {p.subBrandName && (
-                    <span className="badge badge-gray">{p.subBrandName}</span>
+                    <span style={{
+                      fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase',
+                      letterSpacing: '0.05em', color: 'var(--text-muted)',
+                      background: 'var(--bg)', border: '1px solid var(--border)',
+                      borderRadius: '4px', padding: '0.1rem 0.45rem',
+                    }}>
+                      {p.subBrandName}
+                    </span>
                   )}
                 </div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+
+                {/* Project name */}
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
                   {p.projectName}
                 </div>
-                <div className="flex-center gap-md" style={{ flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    📋 {p.agencyName}
-                  </span>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    👤 {p.salesLead}
-                  </span>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    📅 Due {p.planDueDate}
-                  </span>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    {p.packageCount ?? p.versions?.length ?? 0} version{(p.packageCount ?? p.versions?.length ?? 0) !== 1 ? 's' : ''}
-                  </span>
+
+                {/* Meta row */}
+                <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'Agency',      value: p.agencyName   },
+                    { label: 'Sales Lead',  value: p.salesLead    },
+                    { label: 'Due', value: p.planDueDate ? new Date(p.planDueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
+                    { label: 'Versions', value: (() => { const n = p.packageCount ?? p.versions?.length ?? 0; return n === 0 ? 'None' : String(n) })() },
+                  ].map(({ label, value }) => (
+                    <div key={label}>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)' }}>
+                        {label}
+                      </span>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '0.35rem', fontWeight: 500 }}>
+                        {value}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="flex-center gap-sm" onClick={e => e.stopPropagation()}>
+
+              {/* Right — actions */}
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}
+                onClick={e => e.stopPropagation()}
+              >
                 <button
                   className="btn btn-ghost btn-sm"
-                  style={{ color: 'var(--danger)' }}
+                  style={{ color: 'var(--text-subtle)', fontSize: '0.78rem' }}
+                  onClick={() => onDuplicate(p)}
+                >
+                  Duplicate
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: 'var(--text-subtle)', fontSize: '0.78rem' }}
                   onClick={() => {
                     if (confirm(`Delete "${p.projectName}"? This cannot be undone.`)) {
                       onDelete(p.id)
@@ -74,7 +111,10 @@ export default function ProjectList({ projects, onSelect, onNew, onDelete, onEdi
                 >
                   Edit
                 </button>
-                <button className="btn btn-secondary btn-sm" onClick={() => onSelect(p)}>
+                <button
+                  className="btn btn-accent btn-sm"
+                  onClick={() => onSelect(p)}
+                >
                   Open →
                 </button>
               </div>
