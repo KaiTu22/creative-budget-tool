@@ -13,9 +13,18 @@ export default function ProjectList({ projects, onSelect, onNew, onDelete, onEdi
       </div>
 
       {projects.length === 0 && (
-        <div className="empty-state card">
-          <h3>No projects yet</h3>
-          <p>Create your first project to start building a budget</p>
+        <div style={{
+          textAlign: 'center', padding: '4rem 2rem',
+          background: 'var(--surface)', border: '1px dashed var(--border)',
+          borderRadius: '12px', marginTop: '1rem',
+        }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📋</div>
+          <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '0.5rem' }}>
+            No projects yet
+          </div>
+          <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '300px', margin: '0 auto 1.5rem' }}>
+            Each project maps to an RFP. Create your first one to start building a budget.
+          </div>
           <button className="btn btn-accent" onClick={onNew}>+ New Project</button>
         </div>
       )}

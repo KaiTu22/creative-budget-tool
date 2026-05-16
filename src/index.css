@@ -396,3 +396,56 @@ textarea { resize: vertical; min-height: 80px; }
 .tag-green { background: #dcfce7;           color: #15803d;        }
 .tag-amber { background: #fef3c7;           color: #92400e;        }
 .tag-pink  { background: #fce7f3;           color: #9d174d;        }
+
+/* ── PRINT STYLES ── */
+@media print {
+  /* Hide navigation and interactive elements */
+  .app-header,
+  .sticky-bottom,
+  .btn-ghost,
+  .btn-secondary {
+    display: none !important;
+  }
+
+  /* Reset page layout for print */
+  body {
+    background: white;
+    font-size: 12px;
+  }
+
+  .page {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Hide the back and print buttons specifically */
+  button {
+    display: none !important;
+  }
+
+  /* But keep badge and non-interactive elements */
+  .badge {
+    display: inline-flex !important;
+    border: 1px solid #ccc !important;
+    color: #333 !important;
+    background: white !important;
+  }
+
+  /* Clean card borders for print */
+  .card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+    break-inside: avoid;
+  }
+
+  /* Ensure tables don't break across pages */
+  table {
+    break-inside: avoid;
+  }
+
+  /* Page breaks between packages */
+  section {
+    break-inside: avoid;
+  }
+}

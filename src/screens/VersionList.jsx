@@ -161,9 +161,18 @@ export default function VersionList({ project, onNewVersion, onDeleteVersion, on
       )}
 
       {project?.versions?.length === 0 && !showForm && (
-        <div className="empty-state card">
-          <h3>No versions yet</h3>
-          <p>Create a version to start adding packages</p>
+        <div style={{
+          textAlign: 'center', padding: '4rem 2rem',
+          background: 'var(--surface)', border: '1px dashed var(--border)',
+          borderRadius: '12px', marginTop: '1rem',
+        }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📁</div>
+          <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '0.5rem' }}>
+            No versions yet
+          </div>
+          <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '300px', margin: '0 auto 1.5rem' }}>
+            Versions let you build multiple budget scenarios for the same project — e.g. Full Budget, Reduced Scope, Option A.
+          </div>
           <button className="btn btn-accent" onClick={() => setShowForm(true)}>+ New Version</button>
         </div>
       )}
