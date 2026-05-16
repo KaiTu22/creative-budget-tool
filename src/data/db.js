@@ -53,9 +53,29 @@ export async function fetchVersions(projectId) {
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
   if (error) throw error
+
+  // Get package totals separately
+  const versionIds = data.map(v => v.id)
+  let packageTotals = {}
+
+  if (versionIds.length > 0) {
+    const { data: pkgs } = await supabase
+      .from('packages')
+      .select('version_id, data')
+      .in('version_id', versionIds)
+
+    if (pkgs) {
+      pkgs.forEach(pkg => {
+        if (!packageTotals[pkg.version_id]) packageTotals[pkg.version_id] = 0
+        packageTotals[pkg.version_id] += pkg.data?.totalInvestment || 0
+      })
+    }
+  }
+
   return data.map(v => ({
     ...dbToVersion(v),
-    packageCount: v.packages?.[0]?.count ?? 0,
+    packageCount:    v.packages?.[0]?.count ?? 0,
+    totalInvestment: packageTotals[v.id] ?? 0,
   }))
 }
 

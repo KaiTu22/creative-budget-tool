@@ -236,7 +236,7 @@ function PackageCard({ pkg, index, total, onDelete, onEdit, onMoveUp, onMoveDown
             >Duplicate</button>
             <button
               className="btn btn-ghost btn-sm"
-              style={{ color: 'var(--danger)' }}
+              style={{ color: 'var(--text-subtle)' }}
               onClick={() => { if (confirm(`Delete "${pkg.title}"? This cannot be undone.`)) onDelete() }}
             >Delete</button>
           </div>

@@ -181,9 +181,20 @@ export default function VersionList({ project, onNewVersion, onDeleteVersion, on
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary)', marginBottom: '0.2rem' }}>
                 {v.name}
               </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                {v.packageCount ?? v.packages?.length ?? 0} package{(v.packageCount ?? v.packages?.length ?? 0) !== 1 ? 's' : ''}
-                {v.notes && ` · ${v.notes}`}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {v.packageCount ?? v.packages?.length ?? 0} package{(v.packageCount ?? v.packages?.length ?? 0) !== 1 ? 's' : ''}
+                </span>
+                {v.totalInvestment > 0 && (
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent)' }}>
+                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v.totalInvestment)}
+                  </span>
+                )}
+                {v.notes && (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>
+                    {v.notes}
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex-center gap-sm" onClick={e => e.stopPropagation()}>
