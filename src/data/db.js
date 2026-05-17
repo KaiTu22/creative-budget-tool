@@ -413,6 +413,7 @@ function projectToDb(p) {
     campaign_end:    p.campaignEnd,
     salesforce_link: p.salesforceLink,
     status:          p.status || 'active',
+    team:            p.team || null,
   }
 }
 
@@ -434,6 +435,7 @@ function dbToProject(p) {
     salesforceLink: p.salesforce_link,
     folderId:       p.folder_id || null,
     status:         p.status || 'active',
+    team:           p.team || null,
     createdAt:      p.created_at,
     updatedAt:      p.updated_at,
     versions:       [],

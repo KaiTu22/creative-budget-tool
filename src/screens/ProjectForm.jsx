@@ -20,7 +20,7 @@ const EMPTY = {
   brandName: '', subBrandName: '', projectName: '', agencyName: '',
   salesLead: '', pitchLead: '', planDueDate: '', targetAudience: '',
   objective: '', template: 'paramount', campaignStart: '',
-  campaignEnd: '', salesforceLink: '',
+  campaignEnd: '', salesforceLink: '', team: '',
 }
 
 export default function ProjectForm({ existingProject, onSave, onCancel }) {
@@ -126,6 +126,7 @@ export default function ProjectForm({ existingProject, onSave, onCancel }) {
           <Field label="Campaign Start Date" field="campaignStart" type="date"  {...fieldProps} />
           <Field label="Campaign End Date"   field="campaignEnd"   type="date"  {...fieldProps} />
           <Field label="Salesforce Link"     field="salesforceLink" type="url" placeholder="https://" {...fieldProps} />
+          <Field label="Team / Group"        field="team"          placeholder="e.g. OMG Team, Nike Group" {...fieldProps} />
         </div>
       </div>
 

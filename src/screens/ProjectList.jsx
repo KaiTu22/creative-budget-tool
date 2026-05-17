@@ -36,7 +36,7 @@ export default function ProjectList({
   const [editingFolderId, setEditingFolderId]     = useState(null)
   const [editingFolderName, setEditingFolderName] = useState('')
   const [movingProjectId, setMovingProjectId]     = useState(null)
-
+  const [activeTeam, setActiveTeam] = useState(null)
   const SORTS = [
     { key: 'date', label: 'Date Created' },
     { key: 'az',   label: 'A–Z'          },
@@ -52,8 +52,8 @@ export default function ProjectList({
       list = list.filter(p => p.folderId === activeFolderId)
     }
 
-    if (activeStatus) {
-      list = list.filter(p => (p.status || 'active') === activeStatus)
+    if (activeTeam) {
+      list = list.filter(p => p.team === activeTeam)
     }
 
     if (q) {
@@ -72,7 +72,7 @@ export default function ProjectList({
     }
 
     return list
-  }, [projects, search, sort, activeFolderId, activeStatus])
+  }, [projects, search, sort, activeFolderId, activeStatus, activeTeam])
 
   function handleCreateFolder() {
     if (!newFolderName.trim()) return
@@ -299,6 +299,41 @@ export default function ProjectList({
             </div>
           )}
 
+          {/* Team filter */}
+          {projects.some(p => p.team) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-subtle)', marginRight: '0.25rem' }}>
+                Team
+              </span>
+              <button
+                onClick={() => setActiveTeam(null)}
+                style={{
+                  padding: '0.25rem 0.75rem', fontSize: '0.75rem', fontWeight: 600,
+                  borderRadius: '20px', border: '1px solid var(--border)', cursor: 'pointer',
+                  background: activeTeam === null ? 'var(--primary)' : 'var(--surface)',
+                  color: activeTeam === null ? 'white' : 'var(--text-muted)',
+                }}
+              >
+                All
+              </button>
+              {[...new Set(projects.filter(p => p.team).map(p => p.team))].sort().map(team => (
+                <button
+                  key={team}
+                  onClick={() => setActiveTeam(activeTeam === team ? null : team)}
+                  style={{
+                    padding: '0.25rem 0.75rem', fontSize: '0.75rem', fontWeight: 600,
+                    borderRadius: '20px', cursor: 'pointer',
+                    border: `1px solid ${activeTeam === team ? '#c7d2fe' : 'var(--border)'}`,
+                    background: activeTeam === team ? 'var(--navy-light)' : 'var(--surface)',
+                    color: activeTeam === team ? 'var(--primary)' : 'var(--text-muted)',
+                  }}
+                >
+                  {team} · {projects.filter(p => p.team === team).length}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Active folder label */}
           {activeFolderId && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
@@ -421,14 +456,14 @@ export default function ProjectList({
                         </span>
                       )}
                       <StatusBadge status={p.status || 'active'} />
-                      {p.folderName && (
+                      {p.team && (
                         <span style={{
                           fontSize: '0.68rem', fontWeight: 600,
-                          color: 'var(--accent)', background: '#eff6ff',
-                          border: '1px solid #c7d2fe', borderRadius: '4px',
+                          color: '#7c3aed', background: '#f5f3ff',
+                          border: '1px solid #ddd6fe', borderRadius: '4px',
                           padding: '0.1rem 0.45rem',
                         }}>
-                          📁 {p.folderName}
+                          👥 {p.team}
                         </span>
                       )}
                     </div>
