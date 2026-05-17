@@ -9,6 +9,7 @@ export default function AuthScreen() {
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
   const [success, setSuccess]   = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   async function handleSignIn() {
     if (!email.trim() || !password.trim()) { setError('Email and password are required'); return }
@@ -143,13 +144,28 @@ export default function AuthScreen() {
 
             <div className="form-group">
               <label>Password <span style={{ color: 'var(--danger)' }}>*</span></label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError('') }}
-                placeholder="Min. 6 characters"
-                onKeyDown={e => { if (e.key === 'Enter') mode === 'signin' ? handleSignIn() : handleSignUp() }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError('') }}
+                  placeholder="Min. 6 characters"
+                  onKeyDown={e => { if (e.key === 'Enter') mode === 'signin' ? handleSignIn() : handleSignUp() }}
+                  style={{ paddingRight: '4.5rem', width: '100%', boxSizing: 'border-box', border: '1.5px solid var(--border)', borderRadius: '6px', padding: '0.45rem 4.5rem 0.45rem 0.65rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  style={{
+                    position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 600,
+                    padding: 0, lineHeight: 1,
+                  }}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
 
             {error && (
