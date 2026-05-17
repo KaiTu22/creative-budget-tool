@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import './index.css'
-
+import { parseHash, setHash } from './data/routing'
 import ProjectList from './screens/ProjectList'
 import ProjectForm from './screens/ProjectForm'
 import VersionList from './screens/VersionList'
@@ -13,9 +13,16 @@ import TalentProductionForm from './screens/TalentProductionForm'
 import AddedValueForm from './screens/AddedValueForm'
 import SponsorshipForm from './screens/SponsorshipForm'
 import VersionSummary from './screens/VersionSummary'
-
+import { supabase } from './data/supabase'
+import AuthScreen from './screens/AuthScreen'
 import {
-  fetchProjects, createProject as dbCreateProject, deleteProject as dbDeleteProject, updateProject as dbUpdateProject,
+  fetchFolders, createFolder as dbCreateFolder, updateFolder as dbUpdateFolder,
+  deleteFolder as dbDeleteFolder, moveProjectToFolder as dbMoveProjectToFolder,
+  fetchVersionFolders, createVersionFolder as dbCreateVersionFolder,
+  updateVersionFolder as dbUpdateVersionFolder, deleteVersionFolder as dbDeleteVersionFolder,
+  moveVersionToFolder as dbMoveVersionToFolder, fetchProjects, createProject as dbCreateProject,
+  deleteProject as dbDeleteProject, updateProject as dbUpdateProject,
+  updateProjectStatus as dbUpdateProjectStatus,
   duplicateProject as dbDuplicateProject, duplicateVersion as dbDuplicateVersion, duplicatePackage as dbDuplicatePackage,
   fetchVersions, createVersion as dbCreateVersion, deleteVersion as dbDeleteVersion, updateVersion as dbUpdateVersion,
   fetchPackages, createPackage as dbCreatePackage, updatePackage as dbUpdatePackage,
@@ -32,24 +39,118 @@ export default function App() {
   const [activeVersionId, setActiveVersionId] = useState(null)
   const [selectedPackageType, setSelectedPackageType] = useState('influencer')
   const [editingPackage, setEditingPackage]   = useState(null)
+  const [user, setUser]                       = useState(null)
+  const [authLoading, setAuthLoading]         = useState(true)
+  const [folders, setFolders]                 = useState([])
+  const [versionFolders, setVersionFolders]   = useState([])
+  const [activeFolderId, setActiveFolderId]   = useState(null)
 
   const activeProject = projects.find(p => p.id === activeProjectId) || null
   const activeVersion = versions.find(v => v.id === activeVersionId) || null
   const versionForSummary = activeVersion
     ? { ...activeVersion, packages: packages.filter(p => p.versionId === activeVersionId) }
     : null
-
   const projectForVersionList = activeProject
     ? { ...activeProject, versions: versions.filter(v => v.projectId === activeProjectId) }
     : null
 
-  useEffect(() => { loadProjects() }, [])
+  // ── Auth effect ──
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      setAuthLoading(false)
+      if (session?.user) loadProjects()
+    })
 
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      if (session?.user) loadProjects()
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // ── Deep link effect ──
+  useEffect(() => {
+    async function handleDeepLink() {
+      const route = parseHash()
+      if (route.type === 'home') return
+
+      if (route.type === 'project') {
+        setActiveProjectId(route.projectId)
+        await loadVersions(route.projectId)
+        setScreen('versionList')
+      }
+
+      if (route.type === 'version') {
+        setActiveProjectId(route.projectId)
+        setActiveVersionId(route.versionId)
+        await loadVersions(route.projectId)
+        await loadPackages(route.versionId)
+        setScreen('versionSummary')
+      }
+    }
+
+    if (user) handleDeepLink()
+
+    window.addEventListener('popstate', () => {
+      if (user) handleDeepLink()
+    })
+
+    return () => window.removeEventListener('popstate', handleDeepLink)
+  }, [user])
+
+// ── Real-time subscriptions ──
+  useEffect(() => {
+    if (!user) return
+
+    // Projects channel
+    const projectsChannel = supabase
+      .channel('projects-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, payload => {
+        if (payload.eventType === 'INSERT') {
+          loadProjects()
+        } else if (payload.eventType === 'UPDATE') {
+          loadProjects()
+        } else if (payload.eventType === 'DELETE') {
+          setProjects(prev => prev.filter(p => p.id !== payload.old.id))
+        }
+      })
+      .subscribe()
+
+    // Versions channel
+    const versionsChannel = supabase
+      .channel('versions-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'versions' }, payload => {
+        if (activeProjectId) loadVersions(activeProjectId)
+      })
+      .subscribe()
+
+    // Packages channel
+    const packagesChannel = supabase
+      .channel('packages-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'packages' }, payload => {
+        if (activeVersionId) loadPackages(activeVersionId)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(projectsChannel)
+      supabase.removeChannel(versionsChannel)
+      supabase.removeChannel(packagesChannel)
+    }
+  }, [user, activeProjectId, activeVersionId])
+
+  // ── Data loaders ──
   async function loadProjects() {
     try {
       setLoading(true)
-      const data = await fetchProjects()
-      setProjects(data)
+      const [projectData, folderData] = await Promise.all([
+        fetchProjects(),
+        fetchFolders(),
+      ])
+      setProjects(projectData)
+      setFolders(folderData)
     } catch (e) {
       console.error('Failed to load projects:', e)
     } finally {
@@ -59,8 +160,12 @@ export default function App() {
 
   async function loadVersions(projectId) {
     try {
-      const data = await fetchVersions(projectId)
-      setVersions(data)
+      const [versionData, versionFolderData] = await Promise.all([
+        fetchVersions(projectId),
+        fetchVersionFolders(projectId),
+      ])
+      setVersions(versionData)
+      setVersionFolders(versionFolderData)
     } catch (e) {
       console.error('Failed to load versions:', e)
     }
@@ -89,7 +194,7 @@ export default function App() {
     }
   }
 
-async function handleEditProject(data) {
+  async function handleEditProject(data) {
     try {
       const updated = await dbUpdateProject(activeProjectId, data)
       setProjects(prev => prev.map(p => p.id === activeProjectId ? updated : p))
@@ -106,6 +211,24 @@ async function handleEditProject(data) {
       setVersions(prev => prev.filter(v => v.projectId !== id))
     } catch (e) {
       console.error('Failed to delete project:', e)
+    }
+  }
+
+  async function handleUpdateProjectStatus(projectId, status) {
+    try {
+      await dbUpdateProjectStatus(projectId, status)
+      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status } : p))
+    } catch (e) {
+      console.error('Failed to update project status:', e)
+    }
+  }
+
+  async function handleDuplicateProject(project) {
+    try {
+      const newProject = await dbDuplicateProject(project.id)
+      setProjects(prev => [newProject, ...prev])
+    } catch (e) {
+      console.error('Failed to duplicate project:', e)
     }
   }
 
@@ -134,12 +257,21 @@ async function handleEditProject(data) {
     }
   }
 
-async function handleUpdateVersion(versionId, data) {
+  async function handleUpdateVersion(versionId, data) {
     try {
       const updated = await dbUpdateVersion(versionId, data)
       setVersions(prev => prev.map(v => v.id === versionId ? { ...updated, packageCount: v.packageCount } : v))
     } catch (e) {
       console.error('Failed to update version:', e)
+    }
+  }
+
+  async function handleDuplicateVersion(versionId) {
+    try {
+      const newVersion = await dbDuplicateVersion(versionId, activeProjectId)
+      setVersions(prev => [newVersion, ...prev])
+    } catch (e) {
+      console.error('Failed to duplicate version:', e)
     }
   }
 
@@ -150,18 +282,14 @@ async function handleUpdateVersion(versionId, data) {
       if (editingPackage) {
         const updated = await dbUpdatePackage(editingPackage.id, packageData)
         setPackages(prev => prev.map(p =>
-          p.id === editingPackage.id
-            ? { ...updated, versionId: activeVersionId }
-            : p
+          p.id === editingPackage.id ? { ...updated, versionId: activeVersionId } : p
         ))
       } else {
         const position = currentPackages.length
         const created  = await dbCreatePackage(activeVersionId, packageData, position)
         setPackages(prev => [...prev, { ...created, versionId: activeVersionId }])
         setVersions(prev => prev.map(v =>
-          v.id === activeVersionId
-            ? { ...v, packageCount: (v.packageCount ?? 0) + 1 }
-            : v
+          v.id === activeVersionId ? { ...v, packageCount: (v.packageCount ?? 0) + 1 } : v
         ))
       }
       setEditingPackage(null)
@@ -185,39 +313,17 @@ async function handleUpdateVersion(versionId, data) {
     }
   }
 
-async function handleDuplicateProject(project) {
-    try {
-      const newProject = await dbDuplicateProject(project.id)
-      setProjects(prev => [newProject, ...prev])
-    } catch (e) {
-      console.error('Failed to duplicate project:', e)
-    }
-  }
-
-  async function handleDuplicateVersion(versionId) {
-    try {
-      const newVersion = await dbDuplicateVersion(versionId, activeProjectId)
-      setVersions(prev => [newVersion, ...prev])
-    } catch (e) {
-      console.error('Failed to duplicate version:', e)
-    }
-  }
-
   async function handleDuplicatePackage(packageId) {
     try {
       const newPkg = await dbDuplicatePackage(packageId, activeVersionId)
       setPackages(prev => [...prev, { ...newPkg, versionId: activeVersionId }])
       setVersions(prev => prev.map(v =>
-        v.id === activeVersionId
-          ? { ...v, packageCount: (v.packageCount ?? 0) + 1 }
-          : v
+        v.id === activeVersionId ? { ...v, packageCount: (v.packageCount ?? 0) + 1 } : v
       ))
     } catch (e) {
       console.error('Failed to duplicate package:', e)
     }
   }
-
-
 
   async function handleReorderPackage(index, direction) {
     const currentPackages = packages.filter(p => p.versionId === activeVersionId)
@@ -235,6 +341,99 @@ async function handleDuplicateProject(project) {
     }
   }
 
+  // ── Folder actions ──
+  async function handleCreateFolder(name) {
+    try {
+      const folder = await dbCreateFolder(name)
+      setFolders(prev => [...prev, folder])
+    } catch (e) {
+      console.error('Failed to create folder:', e)
+    }
+  }
+
+  async function handleUpdateFolder(id, name) {
+    try {
+      const updated = await dbUpdateFolder(id, name)
+      setFolders(prev => prev.map(f => f.id === id ? updated : f))
+    } catch (e) {
+      console.error('Failed to update folder:', e)
+    }
+  }
+
+  async function handleDeleteFolder(id) {
+    try {
+      await dbDeleteFolder(id)
+      setFolders(prev => prev.filter(f => f.id !== id))
+      setProjects(prev => prev.map(p => p.folderId === id ? { ...p, folderId: null, folderName: null } : p))
+    } catch (e) {
+      console.error('Failed to delete folder:', e)
+    }
+  }
+
+  async function handleMoveProjectToFolder(projectId, folderId) {
+    try {
+      await dbMoveProjectToFolder(projectId, folderId)
+      const folder = folders.find(f => f.id === folderId)
+      setProjects(prev => prev.map(p =>
+        p.id === projectId ? { ...p, folderId, folderName: folder?.name || null } : p
+      ))
+    } catch (e) {
+      console.error('Failed to move project to folder:', e)
+    }
+  }
+
+  async function handleCreateVersionFolder(name) {
+    try {
+      const folder = await dbCreateVersionFolder(activeProjectId, name)
+      setVersionFolders(prev => [...prev, folder])
+    } catch (e) {
+      console.error('Failed to create version folder:', e)
+    }
+  }
+
+  async function handleUpdateVersionFolder(id, name) {
+    try {
+      const updated = await dbUpdateVersionFolder(id, name)
+      setVersionFolders(prev => prev.map(f => f.id === id ? updated : f))
+    } catch (e) {
+      console.error('Failed to update version folder:', e)
+    }
+  }
+
+  async function handleDeleteVersionFolder(id) {
+    try {
+      await dbDeleteVersionFolder(id)
+      setVersionFolders(prev => prev.filter(f => f.id !== id))
+      setVersions(prev => prev.map(v => v.versionFolderId === id ? { ...v, versionFolderId: null } : v))
+    } catch (e) {
+      console.error('Failed to delete version folder:', e)
+    }
+  }
+
+  async function handleMoveVersionToFolder(versionId, versionFolderId) {
+    try {
+      await dbMoveVersionToFolder(versionId, versionFolderId)
+      setVersions(prev => prev.map(v =>
+        v.id === versionId ? { ...v, versionFolderId } : v
+      ))
+    } catch (e) {
+      console.error('Failed to move version to folder:', e)
+    }
+  }
+
+  // ── Auth ──
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    setProjects([])
+    setVersions([])
+    setPackages([])
+    setScreen('projectList')
+    setActiveProjectId(null)
+    setActiveVersionId(null)
+    setHash('/')
+  }
+
+  // ── Navigation ──
   function startEdit(pkg) {
     setEditingPackage(pkg)
     setSelectedPackageType(pkg.type)
@@ -259,45 +458,15 @@ async function handleDuplicateProject(project) {
     setPackages([])
     await loadVersions(project.id)
     setScreen('versionList')
+    setHash(`/project/${project.id}`)
   }
 
   async function openVersion(version) {
     setActiveVersionId(version.id)
     await loadPackages(version.id)
     setScreen('versionSummary')
+    setHash(`/project/${activeProjectId}/version/${version.id}`)
   }
-
-  function Header() {
-    return (
-      <header className="app-header">
-        <div className="app-logo" onClick={() => { setScreen('projectList'); setActiveProjectId(null); setActiveVersionId(null) }} style={{ cursor: 'pointer' }}>
-          <div className="app-logo-mountain">
-            <svg viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <polygon points="45,8 82,75 8,75" fill="none" stroke="white" strokeWidth="3.5"/>
-              <polygon points="45,8 65,45 25,45" fill="white" opacity="0.15"/>
-              <line x1="45" y1="8" x2="45" y2="75" stroke="white" strokeWidth="1" opacity="0.3"/>
-            </svg>
-          </div>
-          <div className="app-logo-text-group">
-            <div className="app-logo-headline">Creative Budget Tool</div>
-          </div>
-        </div>
-        <nav className="breadcrumb">
-          {activeProject && (
-            <span onClick={() => setScreen('versionList')} style={{ cursor: 'pointer', opacity: 0.7 }}>
-              {activeProject.brandName}
-            </span>
-          )}
-          {activeVersion && <>
-            <span className="sep">›</span>
-            <span style={{ color: 'white' }}>{activeVersion.name}</span>
-          </>}
-        </nav>
-      </header>
-    )
-  }
-
- 
 
   function selectPackageType(type) {
     setEditingPackage(null)
@@ -317,7 +486,67 @@ async function handleDuplicateProject(project) {
     }
     setScreen(screenMap[type] || 'influencerForm')
   }
- if (loading) {
+
+  // ── Header ──
+  function Header() {
+    return (
+      <header className="app-header">
+        <div className="app-logo" onClick={() => { setScreen('projectList'); setActiveProjectId(null); setActiveVersionId(null); setHash('/') }} style={{ cursor: 'pointer' }}>
+          <div className="app-logo-mountain">
+            <svg viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="45,8 82,75 8,75" fill="none" stroke="white" strokeWidth="3.5"/>
+              <polygon points="45,8 65,45 25,45" fill="white" opacity="0.15"/>
+              <line x1="45" y1="8" x2="45" y2="75" stroke="white" strokeWidth="1" opacity="0.3"/>
+            </svg>
+          </div>
+          <div className="app-logo-text-group">
+            <div className="app-logo-headline">Creative Budget Tool</div>
+          </div>
+        </div>
+        <nav className="breadcrumb">
+          {activeProject && (
+            <span onClick={() => { setScreen('versionList'); setHash(`/project/${activeProjectId}`) }} style={{ cursor: 'pointer', opacity: 0.7 }}>
+              {activeProject.brandName}
+            </span>
+          )}
+          {activeVersion && <>
+            <span className="sep">›</span>
+            <span style={{ color: 'white' }}>{activeVersion.name}</span>
+          </>}
+        </nav>
+        {user && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)' }}>
+              {user.user_metadata?.full_name || user.email}
+            </span>
+            <button
+              onClick={handleSignOut}
+              style={{
+                background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
+                color: 'white', borderRadius: '6px', padding: '0.3rem 0.75rem',
+                fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600,
+              }}
+            >
+              Sign Out
+            </button>
+          </div>
+        )}
+      </header>
+    )
+  }
+
+  // ── Auth gates ──
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading...</div>
+      </div>
+    )
+  }
+
+  if (!user) return <AuthScreen />
+
+  if (loading) {
     return (
       <>
         <Header />
@@ -327,6 +556,8 @@ async function handleDuplicateProject(project) {
       </>
     )
   }
+
+  // ── Router ──
   return (
     <>
       <Header />
@@ -334,14 +565,22 @@ async function handleDuplicateProject(project) {
       {screen === 'projectList' && (
         <ProjectList
           projects={projects}
+          folders={folders}
+          activeFolderId={activeFolderId}
           onSelect={openProject}
           onNew={() => setScreen('projectForm')}
           onDelete={handleDeleteProject}
-          onDuplicate={handleDuplicateProject}
           onEdit={(project) => {
             setActiveProjectId(project.id)
             setScreen('projectEditForm')
           }}
+          onDuplicate={handleDuplicateProject}
+          onCreateFolder={handleCreateFolder}
+          onUpdateFolder={handleUpdateFolder}
+          onDeleteFolder={handleDeleteFolder}
+          onMoveToFolder={handleMoveProjectToFolder}
+          onSetActiveFolder={setActiveFolderId}
+          onUpdateStatus={handleUpdateProjectStatus}
         />
       )}
 
@@ -363,15 +602,21 @@ async function handleDuplicateProject(project) {
       {screen === 'versionList' && (
         <VersionList
           project={projectForVersionList}
+          versionFolders={versionFolders}
           onNewVersion={handleCreateVersion}
           onDeleteVersion={handleDeleteVersion}
           onOpenVersion={openVersion}
           onEditProject={() => setScreen('projectEditForm')}
           onDuplicateVersion={handleDuplicateVersion}
+          onCreateVersionFolder={handleCreateVersionFolder}
+          onUpdateVersionFolder={handleUpdateVersionFolder}
+          onDeleteVersionFolder={handleDeleteVersionFolder}
+          onMoveVersionToFolder={handleMoveVersionToFolder}
           onBack={() => {
             setScreen('projectList')
             setActiveProjectId(null)
             setActiveVersionId(null)
+            setHash('/')
           }}
         />
       )}
@@ -476,7 +721,10 @@ async function handleDuplicateProject(project) {
           onDuplicatePackage={handleDuplicatePackage}
           onReorderPackage={handleReorderPackage}
           onUpdateVersion={handleUpdateVersion}
-          onBack={() => setScreen('versionList')}
+          onBack={() => {
+            setScreen('versionList')
+            setHash(`/project/${activeProjectId}`)
+          }}
         />
       )}
     </>

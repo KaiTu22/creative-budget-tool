@@ -4,6 +4,27 @@ import { calcVersionTotals, formatCurrency, formatPct } from '../data/calculatio
 import PresentationMode from './PresentationMode'
 import PTCostSummary from './PTCostSummary'
 
+function ShareButton() {
+  const [copied, setCopied] = useState(false)
+
+  function handleShare() {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <button
+      className="btn btn-secondary btn-sm"
+      onClick={handleShare}
+      style={{ color: copied ? 'var(--success-dark)' : 'var(--text-muted)', minWidth: '80px' }}
+    >
+      {copied ? '✓ Copied!' : '🔗 Share'}
+    </button>
+  )
+}
+
 const CAMPAIGN_TYPE_LABELS = {
   talentCaptured:               'Talent Captured',
   hybrid:                       'Hybrid',
@@ -430,6 +451,27 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
               </div>
             )}
           </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShareButton />
+            <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.25rem' }}>
+              {[
+                { key: 'working',      label: 'Working View' },
+                { key: 'presentation', label: 'Presentation' },
+                { key: 'ptCosts',      label: 'P&T Costs' },
+              ].map(mode => (
+                <button
+                  key={mode.key}
+                  onClick={() => setViewMode(mode.key)}
+                  className={`btn btn-sm ${viewMode === mode.key ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ borderRadius: '6px' }}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          
           <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.25rem' }}>
             {[
               { key: 'working',      label: 'Working View' },
