@@ -129,8 +129,18 @@ export default function App() {
     // Packages channel
     const packagesChannel = supabase
       .channel('packages-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'packages' }, payload => {
-        if (activeVersionId) loadPackages(activeVersionId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'packages' }, async payload => {
+        if (activeVersionId) {
+          await loadPackages(activeVersionId)
+          // Recalculate version total from updated packages
+          if (activeProjectId) {
+            const updatedPkgs = await fetchPackages(activeVersionId)
+            const newTotal = updatedPkgs.reduce((sum, p) => sum + (p.totalInvestment || 0), 0)
+            setVersions(prev => prev.map(v =>
+              v.id === activeVersionId ? { ...v, totalInvestment: newTotal } : v
+            ))
+          }
+        }
       })
       .subscribe()
 
