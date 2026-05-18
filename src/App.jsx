@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './index.css'
 import { parseHash, setHash } from './data/routing'
 import ProjectList from './screens/ProjectList'
@@ -53,6 +53,15 @@ export default function App() {
   const projectForVersionList = activeProject
     ? { ...activeProject, versions: versions.filter(v => v.projectId === activeProjectId) }
     : null
+
+  const packagesRef = useRef(packages)
+  useEffect(() => { packagesRef.current = packages }, [packages])
+
+  const activeVersionIdRef = useRef(activeVersionId)
+  useEffect(() => { activeVersionIdRef.current = activeVersionId }, [activeVersionId])
+
+  const activeProjectIdRef = useRef(activeProjectId)
+  useEffect(() => { activeProjectIdRef.current = activeProjectId }, [activeProjectId])
 
   // ── Auth effect ──
   useEffect(() => {
@@ -130,16 +139,23 @@ export default function App() {
     const packagesChannel = supabase
       .channel('packages-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'packages' }, async payload => {
-        if (activeVersionId) {
-          await loadPackages(activeVersionId)
-          // Recalculate version total from updated packages
-          if (activeProjectId) {
-            const updatedPkgs = await fetchPackages(activeVersionId)
-            const newTotal = updatedPkgs.reduce((sum, p) => sum + (p.totalInvestment || 0), 0)
-            setVersions(prev => prev.map(v =>
-              v.id === activeVersionId ? { ...v, totalInvestment: newTotal } : v
-            ))
-          }
+        // Get version_id from payload or fall back to local state
+        let versionId = payload.new?.version_id || payload.old?.version_id
+        if (!versionId && payload.old?.id) {
+          const localPkg = packagesRef.current.find(p => p.id === payload.old.id)
+          versionId = localPkg?.versionId
+        }
+
+        // Reload packages if user is viewing this version
+        if (versionId && activeVersionIdRef.current === versionId) {
+          loadPackages(versionId)
+        }
+
+        // Always reload versions to keep totals fresh
+        const currentProjectId = activeProjectIdRef.current
+        if (currentProjectId) {
+          const updatedVersions = await fetchVersions(currentProjectId)
+          setVersions(updatedVersions)
         }
       })
       .subscribe()
@@ -149,7 +165,7 @@ export default function App() {
       supabase.removeChannel(versionsChannel)
       supabase.removeChannel(packagesChannel)
     }
-  }, [user, activeProjectId, activeVersionId])
+}, [user])
 
   // ── Data loaders ──
   async function loadProjects() {
