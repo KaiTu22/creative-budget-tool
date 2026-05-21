@@ -29,12 +29,17 @@ import {
   deletePackage as dbDeletePackage, updatePackagePositions,
 } from './data/db'
 
+
+
 export default function App() {
   const [projects, setProjects]               = useState([])
   const [versions, setVersions]               = useState([])
   const [packages, setPackages]               = useState([])
   const [loading, setLoading]                 = useState(true)
-  const [screen, setScreen]                   = useState('projectList')
+  const [screen, setScreenState] = useState('projectList')
+  function setScreen(newScreen) {
+    setScreenState(newScreen)
+  }
   const [activeProjectId, setActiveProjectId] = useState(null)
   const [activeVersionId, setActiveVersionId] = useState(null)
   const [selectedPackageType, setSelectedPackageType] = useState('influencer')
@@ -44,6 +49,8 @@ export default function App() {
   const [folders, setFolders]                 = useState([])
   const [versionFolders, setVersionFolders]   = useState([])
   const [activeFolderId, setActiveFolderId]   = useState(null)
+
+  const tabVisibleAtRef = useRef(Date.now())
 
   const activeProject = projects.find(p => p.id === activeProjectId) || null
   const activeVersion = versions.find(v => v.id === activeVersionId) || null
@@ -62,18 +69,56 @@ export default function App() {
 
   const activeProjectIdRef = useRef(activeProjectId)
   useEffect(() => { activeProjectIdRef.current = activeProjectId }, [activeProjectId])
+const hasLoadedRef = useRef(false)
+
+const isVisibleRef = useRef(true)
+  useEffect(() => {
+    function handleVisibilityChange() {
+      isVisibleRef.current = document.visibilityState === 'visible'
+      if (document.visibilityState === 'hidden') {
+        if (document.activeElement) {
+          document.activeElement.blur()
+        }
+      } else {
+        tabVisibleAtRef.current = Date.now()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
+  const screenRef = useRef(screen)
+  useEffect(() => { screenRef.current = screen }, [screen])
+
+useEffect(() => {
+  }, [editingPackage])
+
+  useEffect(() => {
+  }, [editingPackage])
 
   // ── Auth effect ──
-  useEffect(() => {
+ useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setAuthLoading(false)
-      if (session?.user) loadProjects()
+      if (session?.user) loadProjects(true)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) loadProjects()
+      if (_event === 'SIGNED_OUT') {
+        setUser(null)
+        hasLoadedRef.current = false
+      } else if (_event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user)
+        if (!hasLoadedRef.current) {
+          hasLoadedRef.current = true
+          loadProjects(true)
+        }
+      } else if (_event === 'TOKEN_REFRESHED' && session?.user) {
+        setUser(session.user)
+      } else if (session?.user) {
+        setUser(session.user)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -82,6 +127,10 @@ export default function App() {
   // ── Deep link effect ──
   useEffect(() => {
     async function handleDeepLink() {
+      // Don't handle deep link if already on a form screen
+      const safeScreens = ['projectList', 'versionList', 'versionSummary']
+      if (!safeScreens.includes(screenRef.current)) return
+
       const route = parseHash()
       if (route.type === 'home') return
 
@@ -109,6 +158,8 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleDeepLink)
   }, [user])
 
+
+
 // ── Real-time subscriptions ──
   useEffect(() => {
     if (!user) return
@@ -117,6 +168,9 @@ export default function App() {
     const projectsChannel = supabase
       .channel('projects-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, payload => {
+        if (!isVisibleRef.current) return
+        const safeScreens = ['projectList', 'versionList', 'versionSummary']
+        if (!safeScreens.includes(screenRef.current)) return
         if (payload.eventType === 'INSERT') {
           loadProjects()
         } else if (payload.eventType === 'UPDATE') {
@@ -131,7 +185,12 @@ export default function App() {
     const versionsChannel = supabase
       .channel('versions-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'versions' }, payload => {
-        if (activeProjectId) loadVersions(activeProjectId)
+        if (!isVisibleRef.current) return
+        setTimeout(() => {
+          const safeScreens = ['projectList', 'versionList', 'versionSummary']
+        if (!safeScreens.includes(screenRef.current)) return
+          if (activeProjectId) loadVersions(activeProjectId)
+        }, 100)
       })
       .subscribe()
 
@@ -139,6 +198,10 @@ export default function App() {
     const packagesChannel = supabase
       .channel('packages-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'packages' }, async payload => {
+
+        if (!isVisibleRef.current) return
+        const safeScreens = ['projectList', 'versionList', 'versionSummary']
+        if (!safeScreens.includes(screenRef.current)) return
         // Get version_id from payload or fall back to local state
         let versionId = payload.new?.version_id || payload.old?.version_id
         if (!versionId && payload.old?.id) {
@@ -168,9 +231,9 @@ export default function App() {
 }, [user])
 
   // ── Data loaders ──
-  async function loadProjects() {
+  async function loadProjects(showLoading = false) {
     try {
-      setLoading(true)
+      if (showLoading) setLoading(true)
       const [projectData, folderData] = await Promise.all([
         fetchProjects(),
         fetchFolders(),
@@ -739,8 +802,10 @@ export default function App() {
           project={activeProject}
           version={versionForSummary}
           onAddPackage={() => {
+            // Ignore clicks within 300ms of tab becoming visible (ghost clicks)
+            if (Date.now() - tabVisibleAtRef.current < 300) return
             setEditingPackage(null)
-            setScreen('packageTypeSelector')
+            setScreenState('packageTypeSelector')
           }}
           onEditPackage={startEdit}
           onDeletePackage={handleDeletePackage}

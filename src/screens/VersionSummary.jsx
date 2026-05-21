@@ -604,7 +604,11 @@ export default function VersionSummary({ project, version, onAddPackage, onBack,
 
       <div className="sticky-bottom">
         <button className="btn btn-secondary" onClick={onBack}>← Back to Versions</button>
-        <button className="btn btn-accent" onClick={onAddPackage}>+ Add Package</button>
+        <button
+          className="btn btn-accent"
+          onMouseDown={e => e.preventDefault()}
+          onClick={onAddPackage}
+        >+ Add Package</button>
       </div>
     </div>
   )
