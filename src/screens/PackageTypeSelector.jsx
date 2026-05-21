@@ -1,33 +1,35 @@
+import { Mic, Smartphone, Video, Shuffle, Share2, Rocket, Tv, Radio, Trophy, Receipt, Plus } from 'lucide-react'
+
 const PACKAGE_GROUPS = [
   {
     label: 'Talent & Production',
     items: [
-      { key: 'talentProduction', label: 'Talent & Production Only', pill: 'Non-Working', icon: '🎤' },
+      { key: 'talentProduction', label: 'Talent & Production Only', pill: 'Non-Working', icon: <Mic size={16} /> },
     ],
   },
   {
     label: 'Influencer & Social',
     items: [
-      { key: 'influencer',       label: 'Influencer',        pill: 'P&T + Media',  icon: '📲' },
-      { key: 'brandedContent',   label: 'Branded Content',   pill: 'P&T + Media',  icon: '🎥' },
-      { key: 'blendedSocial',    label: 'Blended Social',    pill: 'All Working',  icon: '🔀' },
-      { key: 'socialSponsorship',label: 'Social Sponsorship',pill: 'Rev Share',    icon: '💫' },
+      { key: 'influencer',        label: 'Influencer',         pill: 'P&T + Media',  icon: <Smartphone size={16} /> },
+      { key: 'brandedContent',    label: 'Branded Content',    pill: 'P&T + Media',  icon: <Video size={16} /> },
+      { key: 'blendedSocial',     label: 'Blended Social',     pill: 'All Working',  icon: <Shuffle size={16} /> },
+      { key: 'socialSponsorship', label: 'Social Sponsorship', pill: 'Rev Share',    icon: <Share2 size={16} /> },
     ],
   },
   {
     label: 'Media Placements',
     items: [
-      { key: 'paidDistribution', label: 'Paid Distribution', pill: 'Media Only',   icon: '🚀' },
-      { key: 'streaming',        label: 'Paramount Streaming',pill: 'O&O',         icon: '📺' },
-      { key: 'linear',           label: 'Linear',            pill: 'O&O',          icon: '📡' },
-      { key: 'sponsorship',      label: 'Sponsorship',       pill: 'Bundle',       icon: '🎯' },
+      { key: 'paidDistribution', label: 'Paid Distribution',    pill: 'Media Only', icon: <Rocket size={16} /> },
+      { key: 'streaming',        label: 'Paramount Streaming',  pill: 'O&O',        icon: <Tv size={16} /> },
+      { key: 'linear',           label: 'Linear',               pill: 'O&O',        icon: <Radio size={16} /> },
+      { key: 'sponsorship',      label: 'Sponsorship',          pill: 'Bundle',     icon: <Trophy size={16} /> },
     ],
   },
   {
     label: 'Fees & Other',
     items: [
-      { key: 'fees',             label: 'Fees',              pill: 'Non-Working',  icon: '🧾' },
-      { key: 'addedValue',       label: 'Added Value',       pill: 'No Charge',    icon: '➕' },
+      { key: 'fees',       label: 'Fees',        pill: 'Non-Working', icon: <Receipt size={16} /> },
+      { key: 'addedValue', label: 'Added Value', pill: 'No Charge',   icon: <Plus size={16} /> },
     ],
   },
 ]
@@ -82,22 +84,17 @@ export default function PackageTypeSelector({ version, onSelect, onBack }) {
                     e.currentTarget.style.background = 'var(--surface)'
                   }}
                 >
-                  {/* Icon */}
                   <div style={{
                     width: '32px', height: '32px', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: 'var(--bg)', borderRadius: '6px',
-                    fontSize: '1rem',
+                    color: 'var(--primary)',
                   }}>
                     {item.icon}
                   </div>
-
-                  {/* Label */}
                   <div style={{ flex: 1, fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary)' }}>
                     {item.label}
                   </div>
-
-                  {/* Pill */}
                   <div style={{
                     fontSize: '0.7rem', fontWeight: 600,
                     padding: '0.2rem 0.6rem',
