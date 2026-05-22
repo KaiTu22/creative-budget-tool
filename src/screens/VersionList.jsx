@@ -71,7 +71,14 @@ function ProjectDetailsCard({ project, onEditProject }) {
               ['Agency',         project?.agencyName    || '—'],
               ['Campaign Start', project?.campaignStart || '—'],
               ['Campaign End',   project?.campaignEnd   || '—'],
-              ['Salesforce',     project?.salesforceLink ? 'Link available' : '—'],
+              ['Salesforce', project?.salesforceLink ? (
+                <button
+                  onClick={e => { e.stopPropagation(); window.open(project.salesforceLink, '_blank') }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: '0.84rem', padding: 0, textDecoration: 'underline', fontWeight: 500 }}
+                >
+                  See Salesforce Request →
+                </button>
+              ) : '—'],
             ].map(([label, value]) => (
               <div key={label}>
                 <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: '0.2rem' }}>{label}</div>
