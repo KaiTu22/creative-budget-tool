@@ -189,7 +189,7 @@ useEffect(() => {
         setTimeout(() => {
           const safeScreens = ['projectList', 'versionList', 'versionSummary']
         if (!safeScreens.includes(screenRef.current)) return
-          if (activeProjectId) loadVersions(activeProjectId)
+          if (activeProjectIdRef.current) loadVersions(activeProjectIdRef.current)
         }, 100)
       })
       .subscribe()
