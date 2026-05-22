@@ -287,6 +287,7 @@ useEffect(() => {
     try {
       const updated = await dbUpdateProject(activeProjectId, data)
       setProjects(prev => prev.map(p => p.id === activeProjectId ? updated : p))
+      await loadVersions(activeProjectId)
       setScreen('versionList')
     } catch (e) {
       console.error('Failed to update project:', e)
@@ -684,7 +685,10 @@ useEffect(() => {
         <ProjectForm
           existingProject={activeProject}
           onSave={handleEditProject}
-          onCancel={() => setScreen('versionList')}
+          onCancel={async () => {
+            await loadVersions(activeProjectId)
+            setScreen('versionList')
+          }}
         />
       )}
 
