@@ -112,8 +112,11 @@ body {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.8);
+  color: rgba(255,255,255,0.9);
   font-weight: 500;
+  background: rgba(0, 10, 60, 0.45);
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
 }
 
 .breadcrumb .sep { color: rgba(255,255,255,0.4); }
