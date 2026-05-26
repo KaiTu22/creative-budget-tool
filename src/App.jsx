@@ -27,6 +27,7 @@ import {
   fetchVersions, createVersion as dbCreateVersion, deleteVersion as dbDeleteVersion, updateVersion as dbUpdateVersion,
   fetchPackages, createPackage as dbCreatePackage, updatePackage as dbUpdatePackage,
   deletePackage as dbDeletePackage, updatePackagePositions,
+  fetchProjectVisibility,
 } from './data/db'
 
 
@@ -46,6 +47,7 @@ export default function App() {
   const [editingPackage, setEditingPackage]   = useState(null)
   const [user, setUser]                       = useState(null)
   const [authLoading, setAuthLoading]         = useState(true)
+  const [accessDeniedInfo, setAccessDeniedInfo] = useState(null)
   const [folders, setFolders]                 = useState([])
   const [versionFolders, setVersionFolders]   = useState([])
   const [activeFolderId, setActiveFolderId]   = useState(null)
@@ -133,6 +135,24 @@ useEffect(() => {
 
       const route = parseHash()
       if (route.type === 'home') return
+
+      // Gate on visibility: a private project owned by someone else
+      // should bounce back to the list with an access-denied banner.
+      try {
+        const info = await fetchProjectVisibility(route.projectId)
+        if (!info) {
+          window.location.hash = ''
+          return
+        }
+        if (info.visibility === 'private' && info.ownerId !== user.id) {
+          setAccessDeniedInfo(info)
+          window.location.hash = ''
+          setScreen('projectList')
+          return
+        }
+      } catch (e) {
+        console.error('Visibility check failed:', e)
+      }
 
       if (route.type === 'project') {
         setActiveProjectId(route.projectId)
@@ -593,17 +613,6 @@ useEffect(() => {
             <div className="app-logo-headline">Creative Budget Tool</div>
           </div>
         </div>
-        <nav className="breadcrumb">
-          {activeProject && (
-            <span onClick={() => { setScreen('versionList'); setHash(`/project/${activeProjectId}`) }} style={{ cursor: 'pointer', opacity: 0.7 }}>
-              {activeProject.brandName}
-            </span>
-          )}
-          {activeVersion && <>
-            <span className="sep">›</span>
-            <span style={{ color: 'white' }}>{activeVersion.name}</span>
-          </>}
-        </nav>
         {user && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)' }}>
@@ -657,6 +666,9 @@ useEffect(() => {
           projects={projects}
           folders={folders}
           activeFolderId={activeFolderId}
+          currentUserId={user.id}
+          accessDeniedInfo={accessDeniedInfo}
+          onDismissAccessDenied={() => setAccessDeniedInfo(null)}
           onSelect={openProject}
           onNew={() => setScreen('projectForm')}
           onDelete={handleDeleteProject}
@@ -676,6 +688,7 @@ useEffect(() => {
 
       {screen === 'projectForm' && (
         <ProjectForm
+          currentUserId={user.id}
           onSave={handleCreateProject}
           onCancel={() => setScreen('projectList')}
         />
@@ -684,6 +697,7 @@ useEffect(() => {
       {screen === 'projectEditForm' && (
         <ProjectForm
           existingProject={activeProject}
+          currentUserId={user.id}
           onSave={handleEditProject}
           onCancel={async () => {
             await loadVersions(activeProjectId)

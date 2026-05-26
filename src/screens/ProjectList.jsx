@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Lock } from 'lucide-react'
 
 const STATUSES = [
   { value: 'active',    label: 'Active',    color: '#0064ff', bg: '#eff6ff', border: '#c7d2fe' },
@@ -23,7 +24,8 @@ function StatusBadge({ status }) {
 }
 
 export default function ProjectList({
-  projects, folders, activeFolderId,
+  projects, folders, activeFolderId, currentUserId,
+  accessDeniedInfo, onDismissAccessDenied,
   onSelect, onNew, onDelete, onEdit, onDuplicate,
   onCreateFolder, onUpdateFolder, onDeleteFolder,
   onMoveToFolder, onSetActiveFolder, onUpdateStatus,
@@ -91,6 +93,35 @@ export default function ProjectList({
 
   return (
     <div className="page">
+      {accessDeniedInfo && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+          padding: '0.85rem 1rem', marginBottom: '1rem',
+          background: '#fffbeb', border: '1px solid #fde68a',
+          borderRadius: '8px',
+        }}>
+          <Lock size={18} color="#92400e" style={{ marginTop: '0.1rem', flexShrink: 0 }} />
+          <div style={{ flex: 1, fontSize: '0.84rem', color: '#78350f' }}>
+            <div style={{ fontWeight: 600, marginBottom: '0.15rem' }}>
+              This project is private.
+            </div>
+            <div>
+              {accessDeniedInfo.brandName ? `"${accessDeniedInfo.brandName} — ${accessDeniedInfo.projectName}"` : 'It'} is owned by{' '}
+              <strong>{accessDeniedInfo.ownerName}</strong>
+              {accessDeniedInfo.ownerEmail ? ` (${accessDeniedInfo.ownerEmail})` : ''}. Contact them for access.
+            </div>
+          </div>
+          <button
+            onClick={onDismissAccessDenied}
+            style={{
+              background: 'transparent', border: 'none', color: '#92400e',
+              cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '0 0.25rem',
+            }}
+            aria-label="Dismiss"
+          >×</button>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', gap: '1rem', flexWrap: 'wrap' }}>
         <div>
@@ -442,6 +473,9 @@ export default function ProjectList({
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
+                      {p.visibility === 'private' && (
+                        <Lock size={14} color="var(--text-muted)" aria-label="Private project" />
+                      )}
                       <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary)' }}>
                         {p.brandName}
                       </span>
@@ -476,6 +510,7 @@ export default function ProjectList({
                         { label: 'Sales Lead', value: p.salesLead   },
                         { label: 'Due',        value: p.planDueDate ? new Date(p.planDueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
                         { label: 'Versions',   value: (() => { const n = p.packageCount ?? p.versions?.length ?? 0; return n === 0 ? 'None' : String(n) })() },
+                        { label: 'Created by', value: p.creatorName || '—' },
                       ].map(({ label, value }) => (
                         <div key={label}>
                           <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)' }}>
@@ -517,11 +552,13 @@ export default function ProjectList({
                       style={{ color: 'var(--text-subtle)', fontSize: '0.78rem' }}
                       onClick={() => onDuplicate(p)}
                     >Duplicate</button>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      style={{ color: 'var(--text-subtle)', fontSize: '0.78rem' }}
-                      onClick={() => { if (confirm(`Delete "${p.projectName}"? This cannot be undone.`)) onDelete(p.id) }}
-                    >Delete</button>
+                    {p.createdBy === currentUserId && (
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ color: 'var(--text-subtle)', fontSize: '0.78rem' }}
+                        onClick={() => { if (confirm(`Delete "${p.projectName}"? This cannot be undone.`)) onDelete(p.id) }}
+                      >Delete</button>
+                    )}
                     <button className="btn btn-secondary btn-sm" onClick={() => onEdit(p)}>Edit</button>
                     <button className="btn btn-accent btn-sm" onClick={() => onSelect(p)}>Open →</button>
                   </div>

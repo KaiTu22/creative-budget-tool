@@ -7,7 +7,7 @@ import { supabase } from './supabase'
 export async function fetchProjects() {
   const { data, error } = await supabase
     .from('projects')
-    .select('*, folders(id, name)')
+    .select('*, folders(id, name), creator:profiles!created_by(id, email, full_name)')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data.map(p => ({
@@ -113,6 +113,22 @@ export async function duplicateProject(projectId) {
   }
 
   return dbToProject(newProject)
+}
+
+export async function fetchProjectVisibility(projectId) {
+  const { data, error } = await supabase
+    .rpc('get_project_visibility', { p_id: projectId })
+  if (error) throw error
+  const row = data?.[0]
+  if (!row) return null
+  return {
+    visibility:  row.visibility,
+    ownerId:     row.owner_id,
+    ownerEmail:  row.owner_email,
+    ownerName:   row.owner_name || row.owner_email,
+    projectName: row.project_name,
+    brandName:   row.brand_name,
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -414,6 +430,7 @@ function projectToDb(p) {
     salesforce_link: p.salesforceLink,
     status:          p.status || 'active',
     team:            p.team || null,
+    visibility:      p.visibility === 'private' ? 'private' : 'public',
   }
 }
 
@@ -436,6 +453,10 @@ function dbToProject(p) {
     folderId:       p.folder_id || null,
     status:         p.status || 'active',
     team:           p.team || null,
+    visibility:     p.visibility || 'public',
+    createdBy:      p.created_by || null,
+    creatorEmail:   p.creator?.email || null,
+    creatorName:    p.creator?.full_name || p.creator?.email || null,
     createdAt:      p.created_at,
     updatedAt:      p.updated_at,
     versions:       [],

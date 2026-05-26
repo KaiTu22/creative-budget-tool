@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Lock, Globe } from 'lucide-react'
 
 function Field({ label, field, type = 'text', placeholder = '', required = false, form, errors, onChange }) {
   return (
@@ -20,13 +21,14 @@ const EMPTY = {
   brandName: '', subBrandName: '', projectName: '', agencyName: '',
   salesLead: '', pitchLead: '', planDueDate: '', targetAudience: '',
   objective: '', template: 'paramount', campaignStart: '',
-  campaignEnd: '', salesforceLink: '', team: '',
+  campaignEnd: '', salesforceLink: '', team: '', visibility: 'public',
 }
 
-export default function ProjectForm({ existingProject, onSave, onCancel }) {
+export default function ProjectForm({ existingProject, currentUserId, onSave, onCancel }) {
   const [form, setForm]     = useState(existingProject ? { ...EMPTY, ...existingProject } : EMPTY)
   const [errors, setErrors] = useState({})
   const isEditing           = !!existingProject
+  const isOwner             = !isEditing || existingProject.createdBy === currentUserId
 
   function set(field, value) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -129,6 +131,58 @@ export default function ProjectForm({ existingProject, onSave, onCancel }) {
           <Field label="Team / Group"        field="team"          placeholder="e.g. OMG Team, Nike Group" {...fieldProps} />
         </div>
       </div>
+
+      {isOwner && (
+        <div className="card">
+          <h3 style={{ marginBottom: '1rem', color: 'var(--primary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Visibility
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{
+              display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
+              padding: '0.7rem 0.85rem', borderRadius: '6px', cursor: 'pointer',
+              border: `1px solid ${form.visibility === 'public' ? 'var(--primary)' : 'var(--border)'}`,
+              background: form.visibility === 'public' ? 'var(--navy-light)' : 'var(--surface)',
+            }}>
+              <input
+                type="radio" name="visibility" value="public"
+                checked={form.visibility === 'public'}
+                onChange={() => set('visibility', 'public')}
+                style={{ marginTop: '0.15rem' }}
+              />
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text)' }}>
+                  <Globe size={14} /> Public
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                  Anyone signed in can view and edit this project.
+                </div>
+              </div>
+            </label>
+            <label style={{
+              display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
+              padding: '0.7rem 0.85rem', borderRadius: '6px', cursor: 'pointer',
+              border: `1px solid ${form.visibility === 'private' ? 'var(--primary)' : 'var(--border)'}`,
+              background: form.visibility === 'private' ? 'var(--navy-light)' : 'var(--surface)',
+            }}>
+              <input
+                type="radio" name="visibility" value="private"
+                checked={form.visibility === 'private'}
+                onChange={() => set('visibility', 'private')}
+                style={{ marginTop: '0.15rem' }}
+              />
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text)' }}>
+                  <Lock size={14} /> Private
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                  Only you can view or edit this project.
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+      )}
 
       <div className="sticky-bottom">
         <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
